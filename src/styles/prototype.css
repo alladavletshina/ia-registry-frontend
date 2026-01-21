@@ -1746,4 +1746,197 @@ body {
             align-self: flex-end;
         }
     }
+
+    /* Стили для выпадающего меню уведомлений */
+    .notification-dropdown {
+        position: relative;
+    }
+
+    .notifications-btn {
+        position: relative;
+        background: none;
+        border: none;
+        width: 40px;
+        height: 40px;
+        border-radius: var(--radius-md);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        color: var(--text-light);
+        transition: all var(--transition-fast);
+        font-size: 18px;
+    }
+
+    .notifications-btn:hover {
+        background-color: var(--secondary-100);
+        color: var(--text-dark);
+    }
+
+    .notifications-btn .badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        width: 8px;
+        height: 8px;
+        background-color: var(--danger);
+        border-radius: var(--radius-full);
+        border: 2px solid white;
+        padding: 0;
+        font-size: 0;
+    }
+
+    /* Если хотите показать число вместо точки, используйте: */
+    /*
+    .notifications-btn .badge {
+        position: absolute;
+        top: -2px;
+        right: -2px;
+        width: 18px;
+        height: 18px;
+        background-color: var(--danger);
+        color: white;
+        border-radius: var(--radius-full);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        font-weight: bold;
+    }
+    */
+
+    /* Стили для центра уведомлений */
+    .notification-center {
+        background: white;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        overflow: hidden;
+    }
+
+    .notification-header {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .notification-list {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+
+    .notification-item {
+        padding: 16px 24px;
+        border-bottom: 1px solid var(--border);
+        cursor: pointer;
+        transition: background-color var(--transition-fast);
+        display: flex;
+        align-items: flex-start;
+        gap: 16px;
+    }
+
+    .notification-item:hover {
+        background-color: var(--secondary-50);
+    }
+
+    .notification-item.unread {
+        background-color: var(--primary-50);
+    }
+
+    .notification-item.unread:hover {
+        background-color: var(--primary-100);
+    }
+
+    .notification-item.read {
+        opacity: 0.8;
+    }
+
+    .notification-icon {
+        flex-shrink: 0;
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border-radius: var(--radius-md);
+        border: 1px solid var(--border);
+    }
+
+    .notification-content {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .notification-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 8px;
+    }
+
+    .unread-dot {
+        width: 8px;
+        height: 8px;
+        background-color: var(--primary);
+        border-radius: 50%;
+        display: inline-block;
+        margin-left: 8px;
+    }
+
+    .notification-message {
+        font-size: 13px;
+        color: var(--text-light);
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+
+    .notification-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 12px;
+    }
+
+    .notification-time {
+        color: var(--secondary-500);
+    }
+
+    .no-notifications {
+        padding: 48px 24px;
+        text-align: center;
+        color: var(--secondary-500);
+    }
+
+    .no-notifications p {
+        margin-top: 16px;
+        font-size: 14px;
+    }
+
+    /* Стили для массовых действий */
+    .bulk-actions-panel {
+        animation: slideDown 0.3s ease;
+    }
+
+    @keyframes slideDown {
+        from {
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Закрытие выпадающего меню при клике вне его */
+    .notification-dropdown-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        z-index: 999;
+    }
 }
