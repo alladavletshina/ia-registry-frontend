@@ -1,4 +1,4 @@
-// src/pages/User/UserDashboard.jsx
+// src/pages/User/UserDashboard.jsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { mockAssetsAPI } from '../../services/mockApi';
@@ -48,6 +48,36 @@ const UserDashboard = () => {
     const handleRequestUpdate = (assetId, changes) => {
         console.log('Запрос на обновление актива:', assetId, changes);
         alert('Запрос на проверку отправлен администратору');
+    };
+
+    const handleQuickAction = (action) => {
+        switch(action) {
+            case 'create_report':
+                window.location.href = '/user/my-assets?action=create_report';
+                break;
+            case 'new_task':
+                window.location.href = '/user/tasks?action=create';
+                break;
+            case 'notifications':
+                // В реальном приложении здесь будет открытие панели уведомлений
+                alert('Уведомления:\n1. Новое задание: Проверить документацию\n2. Завтра: Обучение безопасности\n3. Через 3 дня: Срок сдачи отчета');
+                break;
+            case 'statistics':
+                window.location.href = '/user/my-assets?view=statistics';
+                break;
+            case 'db_check':
+                alert('Напоминание: Проверка базы данных клиентов запланирована на 15 февраля');
+                break;
+            case 'update_docs':
+                window.location.href = '/user/my-assets?filter=documentation';
+                break;
+            case 'security_training':
+                const confirmTraining = window.confirm('Записаться на обучение по безопасности 1 марта?');
+                if (confirmTraining) {
+                    alert('Вы успешно записались на обучение. Подробности будут отправлены на email.');
+                }
+                break;
+        }
     };
 
     if (isLoading) {
@@ -104,8 +134,11 @@ const UserDashboard = () => {
                     {recentAssets.length === 0 ? (
                         <div className="card p-8 text-center">
                             <p className="text-light mb-4">У вас пока нет активов</p>
-                            <button className="btn btn-primary">
-                                Создать первый актив
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => alert('Функция создания актива доступна только администраторам')}
+                            >
+                                Запросить создание актива
                             </button>
                         </div>
                     ) : (
@@ -184,34 +217,62 @@ const UserDashboard = () => {
                         <div className="card-body">
                             <h3 className="mb-6">Быстрые действия</h3>
                             <div className="quick-actions">
-                                <button className="quick-action-btn">
+                                <button
+                                    className="quick-action-btn"
+                                    onClick={() => handleQuickAction('create_report')}
+                                >
                                     📝 Создать отчет
                                 </button>
-                                <button className="quick-action-btn">
+                                <button
+                                    className="quick-action-btn"
+                                    onClick={() => handleQuickAction('new_task')}
+                                >
                                     📋 Новая задача
                                 </button>
-                                <button className="quick-action-btn">
+                                <button
+                                    className="quick-action-btn"
+                                    onClick={() => handleQuickAction('notifications')}
+                                >
                                     🔔 Уведомления
                                 </button>
-                                <button className="quick-action-btn">
+                                <button
+                                    className="quick-action-btn"
+                                    onClick={() => handleQuickAction('statistics')}
+                                >
                                     📊 Статистика
                                 </button>
                             </div>
 
                             <h3 className="mt-8 mb-6">Важные даты</h3>
                             <div className="important-dates">
-                                <div className="date-item">
+                                <div className="date-item" onClick={() => handleQuickAction('db_check')}>
                                     <span className="date">15 фев</span>
                                     <span>Проверка БД клиентов</span>
                                 </div>
-                                <div className="date-item">
+                                <div className="date-item" onClick={() => handleQuickAction('update_docs')}>
                                     <span className="date">20 фев</span>
                                     <span>Обновление документации</span>
                                 </div>
-                                <div className="date-item">
+                                <div className="date-item" onClick={() => handleQuickAction('security_training')}>
                                     <span className="date">01 мар</span>
                                     <span>Обучение по безопасности</span>
                                 </div>
+                            </div>
+
+                            <h3 className="mt-8 mb-4">Полезные ссылки</h3>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                <a href="/user/profile" style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                                    📋 Мой профиль и настройки
+                                </a>
+                                <a href="/user/tasks" style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                                    ✅ Мои задачи и поручения
+                                </a>
+                                <a href="#" onClick={() => alert('Руководство пользователя откроется в новой вкладке')} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                                    📚 Руководство пользователя
+                                </a>
+                                <a href="#" onClick={() => alert('Форма обратной связи будет доступна позже')} style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+                                    📧 Обратная связь и поддержка
+                                </a>
                             </div>
                         </div>
                     </div>
