@@ -1,4 +1,4 @@
-// src/layouts/UserLayout.jsx
+// src/layouts/UserLayout.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
 import React, { useState } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
@@ -8,7 +8,8 @@ import '../styles/prototype.css';
 import UserDashboard from '../pages/User/UserDashboard';
 import MyAssets from '../pages/User/MyAssets';
 import ProfilePage from '../pages/User/ProfilePage';
-import TasksPage from '../pages/User/TasksPage'; // Импортируем новый компонент задач
+import TasksPage from '../pages/User/TasksPage';
+import AssetView from '../pages/User/AssetView'; // ИМПОРТИРУЕМ НАСТОЯЩИЙ КОМПОНЕНТ
 
 const UserLayout = () => {
     const { user, logout } = useAuth();
@@ -91,7 +92,7 @@ const UserLayout = () => {
                     <Routes>
                         <Route path="dashboard" element={<UserDashboard />} />
                         <Route path="my-assets" element={<MyAssets />} />
-                        <Route path="assets/:id" element={<AssetView />} />
+                        <Route path="assets/:id" element={<AssetView />} /> {/* ИСПОЛЬЗУЕМ НАСТОЯЩИЙ КОМПОНЕНТ */}
                         <Route path="tasks" element={<TasksPage />} />
                         <Route path="profile" element={<ProfilePage />} />
                     </Routes>
@@ -104,13 +105,5 @@ const UserLayout = () => {
         </div>
     );
 };
-
-// Простой компонент для просмотра актива (оставляем на месте)
-const AssetView = () => (
-    <div>
-        <h2>Просмотр актива</h2>
-        <p>Здесь будет детальная информация об активе</p>
-    </div>
-);
 
 export default UserLayout;
