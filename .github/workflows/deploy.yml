@@ -3,78 +3,50 @@ name: 🚀 Deploy React App
 on:
   push:
     branches: [ main ]
-  workflow_dispatch:  # Ручной запуск из GitHub UI
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Получаем код
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      # 2. Устанавливаем Node.js
-      - name: ⚙️ Setup Node.js
+      - name: ⚙️ Setup Node.js 20
         uses: actions/setup-node@v4
         with:
-          node-version: '18'
+          node-version: '20'  # ← ОБЯЗАТЕЛЬНО 20+
           cache: 'npm'
 
-      # 3. Устанавливаем зависимости
       - name: 📦 Install dependencies
-        run: npm ci
+        run: npm install  # ← используем install вместо ci
 
-      # 4. Собираем проект НА GITHUB (не на сервере!)
       - name: 🏗️ Build project
         run: npm run build
 
-      # 5. Показываем что собрали
-      - name: 📊 Check build
-        run: |
-          echo "Build contents:"
-          ls -la build/
-          echo "Total size:"
-          du -sh build/
-
-      # 6. Настраиваем SSH для деплоя
       - name: 🔐 Setup SSH
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          
-          # Добавляем хост в known_hosts чтобы избежать вопроса
-          ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
 
-      # 7. Копируем готовые файлы на сервер
-      - name: 📤 Upload files to server
+      - name: 📤 Upload files
         run: |
-          echo "Uploading files to server..."
-          
-          # Используем rsync для надёжной передачи
+          echo "Uploading to ${{ secrets.SERVER_HOST }}..."
           rsync -avz \
-            --progress \
             --delete \
             -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
             build/ \
             ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
 
-      # 8. Настраиваем права на сервере
-      - name: 🔧 Fix permissions on server
+      - name: 🔧 Fix permissions
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
               ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
               "cd /var/www/u3391852/data/www/myiam.ru && \
-               echo 'Setting permissions...' && \
                find . -type d -exec chmod 755 {} \; && \
                find . -type f -exec chmod 644 {} \; && \
-               echo '✅ Permissions updated'"
-
-      # 9. Финальное сообщение
-      - name: ✅ Verify deployment
-        run: |
-          echo "🎉 Deployment completed!"
-          echo "🌐 Site: https://myiam.ru"
-          echo "🕒 Time: $(date)"
+               echo '✅ Deployment done: \$(date)'"
