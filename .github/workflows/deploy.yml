@@ -17,83 +17,78 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
-      - name: 📦 Install dependencies
-        run: npm install
+      - name: 📦 Install & Build
+        run: |
+          npm install
+          CI=false npm run build
 
-      - name: 🏗️ Build project
-        run: CI=false npm run build
-
-      - name: 🔐 Setup SSH for Dropbear
+      - name: 🔐 Fix SSH Key Format
         run: |
           mkdir -p ~/.ssh
-          # Сохраняем ключ
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          
+          # 1. Сохраняем ключ ОЧИЩЕННЫЙ от лишних символов
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tr -d '\r' > ~/.ssh/raw_key
+          
+          # 2. Удаляем пустые строки в начале/конце
+          sed -i '/^$/d' ~/.ssh/raw_key
+          sed -i '1{/^$/d;}' ~/.ssh/raw_key
+          sed -i '${/^$/d;}' ~/.ssh/raw_key
+          
+          # 3. Проверяем формат
+          echo "=== Key format check ==="
+          head -2 ~/.ssh/raw_key
+          echo "..."
+          tail -2 ~/.ssh/raw_key
+          
+          # 4. Проверяем валидность ключа
+          if ssh-keygen -l -f ~/.ssh/raw_key 2>/dev/null; then
+            echo "✅ Key is valid"
+            cp ~/.ssh/raw_key ~/.ssh/deploy_key
+          else
+            echo "❌ Key is invalid. Showing first 100 chars:"
+            head -c 100 ~/.ssh/raw_key
+            exit 1
+          fi
+          
           chmod 600 ~/.ssh/deploy_key
           
-          # Dropbear требует старые алгоритмы
+          # 5. Добавляем хост в known_hosts
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: 🧪 Test SSH Connection
+        run: |
           echo "Testing SSH connection..."
-          ssh -i ~/.ssh/deploy_key \
+          timeout 10 ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
-              -o HostKeyAlgorithms=+ssh-rsa \
-              -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+              -o BatchMode=yes \
               -o ConnectTimeout=5 \
               ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
-              "echo '✅ SSH connection test successful!'"
+              "echo '✅ SSH test successful'; whoami; pwd" \
+              && echo "✅ Connection test passed" || echo "❌ Connection test failed"
 
-      - name: 📤 Upload files with SCP (работает с Dropbear)
+      - name: 📤 Deploy with Rsync
         run: |
-          echo "Uploading files to ${{ secrets.SERVER_HOST }}..."
-          
-          # 1. Загружаем index.html
-          scp -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=no \
-              -o HostKeyAlgorithms=+ssh-rsa \
-              -o PubkeyAcceptedAlgorithms=+ssh-rsa \
-              build/index.html \
-              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
-          
-          echo "✅ index.html uploaded"
-          
-          # 2. Загружаем остальные файлы (кроме static, который загрузим отдельно)
-          for file in build/*.json build/*.ico build/*.png build/*.txt; do
-            if [ -f "$file" ]; then
-              scp -i ~/.ssh/deploy_key \
-                  -o StrictHostKeyChecking=no \
-                  -o HostKeyAlgorithms=+ssh-rsa \
-                  "$file" \
-                  ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
-              echo "✅ Uploaded: $(basename "$file")"
-            fi
-          done
-          
-          # 3. Загружаем папку static рекурсивно
-          scp -i ~/.ssh/deploy_key \
-              -o StrictHostKeyChecking=no \
-              -o HostKeyAlgorithms=+ssh-rsa \
-              -r build/static \
-              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
-          
-          echo "✅ static folder uploaded"
+          echo "Deploying files..."
+          rsync -avz \
+            --progress \
+            --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            build/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
 
-      - name: 🔧 Fix permissions
+      - name: 🔧 Set Permissions
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
-              -o HostKeyAlgorithms=+ssh-rsa \
               ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
               "cd /var/www/u3391852/data/www/myiam.ru && \
-               echo 'Setting permissions...' && \
-               chmod 644 index.html *.json *.ico *.png *.txt 2>/dev/null || true && \
-               chmod 755 static && \
-               find static -type f -exec chmod 644 {} \; && \
-               echo '✅ Deployment completed at \$(date)' && \
-               echo '📂 Final check:' && \
-               ls -la"
+               find . -type d -exec chmod 755 {} \; && \
+               find . -type f -exec chmod 644 {} \; && \
+               echo '✅ Permissions set at \$(date)'"
 
-      - name: ✅ Verify deployment
+      - name: ✅ Verify
         run: |
-          echo "🎉 Deployment completed successfully!"
-          echo "🌐 Your site is live at: https://myiam.ru"
-          echo "🕒 Time: $(date)"
+          echo "🎉 Deployment completed!"
+          echo "🌐 Site: https://myiam.ru"
+          curl -s -o /dev/null -w "Status: %{http_code}\n" https://myiam.ru || true
