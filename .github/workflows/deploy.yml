@@ -1,0 +1,80 @@
+name: 🚀 Deploy React App
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Ручной запуск из GitHub UI
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Получаем код
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      # 2. Устанавливаем Node.js
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      # 3. Устанавливаем зависимости
+      - name: 📦 Install dependencies
+        run: npm ci
+
+      # 4. Собираем проект НА GITHUB (не на сервере!)
+      - name: 🏗️ Build project
+        run: npm run build
+
+      # 5. Показываем что собрали
+      - name: 📊 Check build
+        run: |
+          echo "Build contents:"
+          ls -la build/
+          echo "Total size:"
+          du -sh build/
+
+      # 6. Настраиваем SSH для деплоя
+      - name: 🔐 Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          # Добавляем хост в known_hosts чтобы избежать вопроса
+          ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+
+      # 7. Копируем готовые файлы на сервер
+      - name: 📤 Upload files to server
+        run: |
+          echo "Uploading files to server..."
+          
+          # Используем rsync для надёжной передачи
+          rsync -avz \
+            --progress \
+            --delete \
+            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
+            build/ \
+            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
+
+      # 8. Настраиваем права на сервере
+      - name: 🔧 Fix permissions on server
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "cd /var/www/u3391852/data/www/myiam.ru && \
+               echo 'Setting permissions...' && \
+               find . -type d -exec chmod 755 {} \; && \
+               find . -type f -exec chmod 644 {} \; && \
+               echo '✅ Permissions updated'"
+
+      # 9. Финальное сообщение
+      - name: ✅ Verify deployment
+        run: |
+          echo "🎉 Deployment completed!"
+          echo "🌐 Site: https://myiam.ru"
+          echo "🕒 Time: $(date)"
