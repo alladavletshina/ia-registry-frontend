@@ -36,7 +36,7 @@ jobs:
       - name: 📤 Deploy via FTP
         uses: SamKirkland/FTP-Deploy-Action@v4.3.4
         with:
-          server: 37.140.192.212
+          server: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.FTP_USERNAME }}
           password: ${{ secrets.FTP_PASSWORD }}
           server-dir: /var/www/u3391852/data/www/myiam.ru/
