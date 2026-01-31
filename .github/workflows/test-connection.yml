@@ -1,0 +1,38 @@
+name: Test SSH Connection
+
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 🔍 Debug - Show key info
+        run: |
+          echo "=== Сохраняем ключ ==="
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/test_key
+          
+          echo "=== Проверяем длину ==="
+          wc -l ~/.ssh/test_key
+          
+          echo "=== Первые 3 строки ==="
+          head -3 ~/.ssh/test_key
+          
+          echo "=== Последние 3 строки ==="
+          tail -3 ~/.ssh/test_key
+          
+          echo "=== Проверяем формат ==="
+          ssh-keygen -l -f ~/.ssh/test_key 2>&1 || echo "⚠ Формат ключа невалидный"
+
+      - name: 🔐 Test SSH connection
+        run: |
+          chmod 600 ~/.ssh/test_key
+          
+          echo "Пробуем подключиться..."
+          ssh -i ~/.ssh/test_key \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=10 \
+              -v \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "echo '🎉 SUCCESS!'; echo 'User:'; whoami; echo 'Directory:'; pwd" \
+              2>&1 | tail -20
