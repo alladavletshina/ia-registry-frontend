@@ -1,0 +1,39 @@
+# .github/workflows/deploy-ftp.yml
+name: 🚀 Deploy via FTP
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: ⚙️ Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 📦 Install dependencies
+        run: npm install
+
+      - name: 🏗️ Build project
+        run: CI=false npm run build
+
+      - name: 📤 Deploy via FTP
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.4
+        with:
+          server: 37.140.192.212  # ⬅️ ИСПРАВЛЕНО: IP из ваших данных
+          username: ${{ secrets.FTP_USERNAME }}
+          password: ${{ secrets.FTP_PASSWORD }}
+          server-dir: /var/www/u3391852/data/www/myiam.ru/  # ⬅️ ИСПРАВЛЕНО: правильный путь
+          local-dir: ./build/
+          exclude: |
+            **/.git*
+            **/.git*/
+            **/node_modules/
+          dangerous-clean-slate: false  # ✅ ЭТО ОК! Оставляйте false
