@@ -30,3 +30,15 @@ jobs:
             **/.git*/
             **/node_modules/
           dangerous-clean-slate: false
+
+      - name: 🔧 Clear browser cache hint
+        run: |
+          echo "🌐 Ссылка для принудительной перезагрузки:"
+          echo "https://myiam.ru?cb=$(date +%s)"
+          echo ""
+          echo "📋 Инструкция:"
+          echo "1. Откройте ссылку выше"
+          echo "2. Или откройте сайт в режиме инкогнито (Ctrl+Shift+N)"
+          echo "3. Или нажмите Ctrl+F5 на странице"
+          echo ""
+          echo "✅ Деплой завершен в $(date)"
