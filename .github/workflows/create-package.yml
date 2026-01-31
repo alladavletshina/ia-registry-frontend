@@ -1,0 +1,53 @@
+# .github/workflows/create-package.yml
+name: Create Deployment Package
+
+on: [push]
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install && CI=false npm run build
+
+      - name: Create ready-to-upload package
+        run: |
+          # Создаем папку с датой
+          DEPLOY_DIR="deploy-$(date +%Y%m%d-%H%M%S)"
+          mkdir -p $DEPLOY_DIR
+          cp -r build/* $DEPLOY_DIR/
+          
+          # Создаем инструкции
+          cat > $DEPLOY_DIR/DEPLOY_INSTRUCTIONS.txt << 'EOF'
+          🚀 Инструкция по деплою:
+          
+          1. Залогиньтесь в панель управления хостингом
+          2. Откройте файловый менеджер
+          3. Перейдите в /var/www/u3391852/data/www/myiam.ru/
+          4. Загрузите ВСЕ файлы из этой папки
+          5. Замените существующие файлы
+          
+          📁 Содержимое:
+          - index.html - главная страница
+          - static/ - статические файлы
+          - *.json, *.ico, *.png - дополнительные файлы
+          
+          ✅ После загрузки сайт будет обновлён!
+          EOF
+          
+          # Архивируем
+          zip -r deployment-package.zip $DEPLOY_DIR/
+          ls -lh *.zip
+          
+          echo "📦 Пакет создан: deployment-package.zip"
+          echo "📥 Скачайте его из Artifacts в GitHub Actions"
+          echo "📤 Загрузите через панель управления хостинга"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: deployment-package.zip
