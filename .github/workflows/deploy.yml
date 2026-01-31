@@ -13,40 +13,87 @@ jobs:
       - name: 📥 Checkout code
         uses: actions/checkout@v4
 
-      - name: ⚙️ Setup Node.js 20
+      - name: ⚙️ Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'  # ← ОБЯЗАТЕЛЬНО 20+
+          node-version: '20'
           cache: 'npm'
 
       - name: 📦 Install dependencies
         run: npm install
 
-      - name: 🏗️ Build project (ignore ESLint errors)
-        run: CI=false npm run build  # ← ВАЖНО: отключаем ESLint ошибки в CI
+      - name: 🏗️ Build project
+        run: CI=false npm run build
 
-      - name: 🔐 Setup SSH
+      - name: 🔐 Setup SSH for Dropbear
         run: |
           mkdir -p ~/.ssh
+          # Сохраняем ключ
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          
+          # Dropbear требует старые алгоритмы
+          echo "Testing SSH connection..."
+          ssh -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -o HostKeyAlgorithms=+ssh-rsa \
+              -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+              -o ConnectTimeout=5 \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
+              "echo '✅ SSH connection test successful!'"
 
-      - name: 📤 Upload files
+      - name: 📤 Upload files with SCP (работает с Dropbear)
         run: |
-          echo "Uploading to ${{ secrets.SERVER_HOST }}..."
-          rsync -avz \
-            --delete \
-            -e "ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no" \
-            build/ \
-            ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
+          echo "Uploading files to ${{ secrets.SERVER_HOST }}..."
+          
+          # 1. Загружаем index.html
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -o HostKeyAlgorithms=+ssh-rsa \
+              -o PubkeyAcceptedAlgorithms=+ssh-rsa \
+              build/index.html \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
+          
+          echo "✅ index.html uploaded"
+          
+          # 2. Загружаем остальные файлы (кроме static, который загрузим отдельно)
+          for file in build/*.json build/*.ico build/*.png build/*.txt; do
+            if [ -f "$file" ]; then
+              scp -i ~/.ssh/deploy_key \
+                  -o StrictHostKeyChecking=no \
+                  -o HostKeyAlgorithms=+ssh-rsa \
+                  "$file" \
+                  ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
+              echo "✅ Uploaded: $(basename "$file")"
+            fi
+          done
+          
+          # 3. Загружаем папку static рекурсивно
+          scp -i ~/.ssh/deploy_key \
+              -o StrictHostKeyChecking=no \
+              -o HostKeyAlgorithms=+ssh-rsa \
+              -r build/static \
+              ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }}:/var/www/u3391852/data/www/myiam.ru/
+          
+          echo "✅ static folder uploaded"
 
       - name: 🔧 Fix permissions
         run: |
           ssh -i ~/.ssh/deploy_key \
               -o StrictHostKeyChecking=no \
+              -o HostKeyAlgorithms=+ssh-rsa \
               ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} \
               "cd /var/www/u3391852/data/www/myiam.ru && \
-               find . -type d -exec chmod 755 {} \; && \
-               find . -type f -exec chmod 644 {} \; && \
-               echo '✅ Deployment done: \$(date)'"
+               echo 'Setting permissions...' && \
+               chmod 644 index.html *.json *.ico *.png *.txt 2>/dev/null || true && \
+               chmod 755 static && \
+               find static -type f -exec chmod 644 {} \; && \
+               echo '✅ Deployment completed at \$(date)' && \
+               echo '📂 Final check:' && \
+               ls -la"
+
+      - name: ✅ Verify deployment
+        run: |
+          echo "🎉 Deployment completed successfully!"
+          echo "🌐 Your site is live at: https://myiam.ru"
+          echo "🕒 Time: $(date)"
