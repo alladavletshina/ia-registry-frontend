@@ -13,7 +13,7 @@ export const mockAssets = [
     },
     {
         id: 2,
-        name: 'Внутренняя документация2',
+        name: 'Внутренняя документация',
         category: 'documentation',
         owner: 'Петрова А.С.',
         status: 'needs_review',
@@ -21,7 +21,7 @@ export const mockAssets = [
         integrity: 'high',
         availability: 'high',
         lastReview: '2023-12-01',
-        description: 'Техническая документация и регламенты2'
+        description: 'Техническая документация и регламенты'
     },
     {
         id: 3,
