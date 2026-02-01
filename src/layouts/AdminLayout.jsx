@@ -137,7 +137,7 @@ const AdminLayout = () => {
                 </main>
 
                 <footer className="content-footer">
-                    <p>Система управления информационными активами © 2024</p>
+                    <p>Система управления информационными активами © 2026</p>
                 </footer>
             </div>
         </div>
