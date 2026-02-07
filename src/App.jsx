@@ -1,34 +1,22 @@
-// src/App.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
+// src/App.jsx - ФИНАЛЬНЫЙ
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import './styles/prototype.css';
 
-// Импортируем AuthProvider из контекста
 import { AuthProvider } from './contexts/AuthContext';
-
-// Импортируем Layout компоненты
+import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './layouts/AdminLayout';
 import UserLayout from './layouts/UserLayout';
-
-// Импортируем LoginPage
-import LoginPage from './pages/Auth/LoginPage';
-
-// Защищенный маршрут
-import ProtectedRoute from './components/common/ProtectedRoute';
-
-console.log('App component loading...');
+import LoginPage from './pages/Auth/LoginPage'; // <-- ЭТОТ ИМПОРТ ДОЛЖЕН БЫТЬ!
 
 function App() {
-    console.log('App rendering...');
-
     return (
         <BrowserRouter>
-            {/* Используем AuthProvider из contexts/AuthContext.jsx */}
             <AuthProvider>
                 <div style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
                     <Routes>
-                        {/* Public route */}
-                        <Route path="/login" element={<LoginPage />} />
+                        {/* Public route - ВХОД */}
+                        <Route path="/login" element={<LoginPage />} /> {/* <-- ЭТОТ РОУТ ДОЛЖЕН БЫТЬ! */}
 
                         {/* Protected Admin routes */}
                         <Route path="/admin/*" element={

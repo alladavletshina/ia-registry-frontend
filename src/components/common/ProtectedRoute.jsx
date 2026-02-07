@@ -1,37 +1,44 @@
 // src/components/common/ProtectedRoute.jsx
 import React from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
-const ProtectedRoute = ({ children, role }) => {
-    const { user, loading } = useAuth();
+const ProtectedRoute = ({ children, requiredRole }) => {
+    const { isAuthenticated, user, loading } = useAuth();
+    const location = useLocation();
 
     if (loading) {
         return (
             <div style={{
-                padding: '50px',
-                textAlign: 'center',
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
                 height: '100vh'
             }}>
-                <div>
-                    <div style={{ marginBottom: '10px' }}>Загрузка...</div>
-                    <div style={{ fontSize: '12px', color: '#666' }}>Проверка авторизации</div>
-                </div>
+                <div style={{
+                    width: '40px',
+                    height: '40px',
+                    border: '4px solid #f3f3f3',
+                    borderTop: '4px solid #3498db',
+                    borderRadius: '50%',
+                    animation: 'spin 1s linear infinite'
+                }} />
             </div>
         );
     }
 
-    if (!user) {
-        console.log('No user, redirecting to login');
-        return <Navigate to="/login" replace />;
+    if (!isAuthenticated) {
+        // Сохраняем URL для редиректа после логина
+        return <Navigate to="/login" state={{ from: location }} replace />;
     }
 
-    if (role && user.role !== role) {
-        console.log(`User role ${user.role} doesn't match required ${role}`);
-        return <Navigate to={`/${user.role}/dashboard`} replace />;
+    if (requiredRole && user?.role !== requiredRole) {
+        // У пользователя нет нужной роли
+        if (user?.role === 'admin') {
+            return <Navigate to="/admin/dashboard" replace />;
+        } else {
+            return <Navigate to="/user/dashboard" replace />;
+        }
     }
 
     return children;

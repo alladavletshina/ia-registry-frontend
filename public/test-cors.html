@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CORS Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        button { padding: 10px 15px; margin: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        pre { background: #f5f5f5; padding: 10px; }
+    </style>
+</head>
+<body>
+<h1>CORS Test Page</h1>
+
+<div>
+    <button onclick="testDirect()">Test Direct Auth Service (8083)</button>
+    <button onclick="testGateway()">Test Gateway (8082)</button>
+    <button onclick="testLogin()">Test Login</button>
+</div>
+
+<div id="result"></div>
+
+<script>
+    async function testDirect() {
+        try {
+            const response = await fetch('http://localhost:8083/api/auth/health', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                mode: 'cors'
+            });
+            const data = await response.json();
+            showResult('Direct Auth Service (8083)', data, true);
+        } catch (error) {
+            showResult('Direct Auth Service (8083)', error.message, false);
+        }
+    }
+
+    async function testGateway() {
+        try {
+            const response = await fetch('http://localhost:8082/api/auth/health', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                mode: 'cors'
+            });
+            const data = await response.json();
+            showResult('Gateway (8082)', data, true);
+        } catch (error) {
+            showResult('Gateway (8082)', error.message, false);
+        }
+    }
+
+    async function testLogin() {
+        try {
+            const response = await fetch('http://localhost:8083/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: 'admin', password: 'admin123' }),
+                mode: 'cors'
+            });
+            const data = await response.json();
+            showResult('Login (8083)', {
+                success: true,
+                hasToken: !!data.accessToken,
+                tokenPreview: data.accessToken ? data.accessToken.substring(0, 50) + '...' : 'No token'
+            }, true);
+        } catch (error) {
+            showResult('Login (8083)', error.message, false);
+        }
+    }
+
+    function showResult(title, data, success) {
+        const resultDiv = document.getElementById('result');
+        const div = document.createElement('div');
+        div.className = success ? 'success' : 'error';
+        div.innerHTML = `
+                <h3>${success ? '✅' : '❌'} ${title}</h3>
+                <pre>${typeof data === 'string' ? data : JSON.stringify(data, null, 2)}</pre>
+                <hr>
+            `;
+        resultDiv.appendChild(div);
+    }
+</script>
+</body>
+</html>
