@@ -114,7 +114,7 @@ const LoginPage = () => {
                         <button
                             type="button"
                             onClick={() => handleTestLogin('user')}
-                            style={{...styles.testButton, background: '#3498db'}}
+                            style={{...styles.testButton, background: 'var(--primary)'}}
                             disabled={loading}
                         >
                             <strong>User</strong>
@@ -133,38 +133,43 @@ const styles = {
         justifyContent: 'center',
         alignItems: 'center',
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
         padding: '20px'
     },
     card: {
-        background: 'white',
-        borderRadius: '12px',
+        background: 'var(--surface)',
+        borderRadius: 'var(--radius-xl)',
         padding: '40px',
         width: '100%',
         maxWidth: '450px',
-        boxShadow: '0 15px 50px rgba(0,0,0,0.15)'
+        boxShadow: 'var(--shadow-xl)',
+        border: '1px solid var(--border)'
     },
     title: {
         textAlign: 'center',
-        marginBottom: '8px',
-        color: '#2c3e50',
+        marginBottom: '32px',
+        color: 'var(--text-dark)',
         fontSize: '28px',
-        fontWeight: '600'
+        fontWeight: '700',
+        background: 'linear-gradient(135deg, var(--primary-500), var(--primary-700))',
+        WebkitBackgroundClip: 'text',
+        WebkitTextFillColor: 'transparent',
+        backgroundClip: 'text'
     },
     subtitle: {
         textAlign: 'center',
-        color: '#7f8c8d',
+        color: 'var(--text-light)',
         marginBottom: '30px',
         fontSize: '16px'
     },
     backendInfo: {
-        background: '#f8f9fa',
+        background: 'var(--bg-light)',
         padding: '12px 16px',
-        borderRadius: '8px',
+        borderRadius: 'var(--radius-md)',
         marginBottom: '25px',
-        border: '1px solid #e9ecef',
+        border: '1px solid var(--border)',
         fontSize: '13px',
-        color: '#495057'
+        color: 'var(--text-light)'
     },
     form: {
         marginBottom: '25px'
@@ -175,36 +180,36 @@ const styles = {
     label: {
         display: 'block',
         marginBottom: '8px',
-        color: '#2c3e50',
+        color: 'var(--text-dark)',
         fontSize: '14px',
         fontWeight: '500'
     },
     input: {
         width: '100%',
         padding: '14px 16px',
-        border: '1px solid #ddd',
-        borderRadius: '8px',
+        border: '1px solid var(--border)',
+        borderRadius: 'var(--radius-md)',
         fontSize: '16px',
         boxSizing: 'border-box',
         transition: 'border-color 0.3s',
-        backgroundColor: '#fdfdfd'
+        backgroundColor: 'var(--bg-light)'
     },
     error: {
-        background: '#fee',
-        color: '#c33',
+        background: 'var(--danger-100)',
+        color: 'var(--danger-500)',
         padding: '12px 16px',
-        borderRadius: '8px',
+        borderRadius: 'var(--radius-md)',
         marginBottom: '20px',
-        border: '1px solid #fcc',
+        border: '1px solid var(--danger-100)',
         fontSize: '14px'
     },
     button: {
         width: '100%',
         padding: '16px',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
         color: 'white',
         border: 'none',
-        borderRadius: '8px',
+        borderRadius: 'var(--radius-md)',
         fontSize: '16px',
         fontWeight: '600',
         display: 'flex',
@@ -226,7 +231,7 @@ const styles = {
         textAlign: 'center'
     },
     testTitle: {
-        color: '#7f8c8d',
+        color: 'var(--text-light)',
         marginBottom: '12px',
         fontSize: '14px'
     },
@@ -237,10 +242,10 @@ const styles = {
     testButton: {
         flex: 1,
         padding: '14px',
-        background: '#2ecc71',
+        background: 'var(--warning)',
         color: 'white',
         border: 'none',
-        borderRadius: '8px',
+        borderRadius: 'var(--radius-md)',
         cursor: 'pointer',
         fontSize: '14px',
         display: 'flex',
@@ -255,7 +260,7 @@ const styles = {
     }
 };
 
-// Добавь в глобальные стили или в компонент
+// Глобальные стили
 const globalStyles = `
     @keyframes spin {
         0% { transform: rotate(0deg); }
@@ -264,8 +269,8 @@ const globalStyles = `
     
     input:focus {
         outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: var(--primary-500);
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     }
     
     button:disabled {
@@ -275,8 +280,10 @@ const globalStyles = `
 `;
 
 // Добавляем глобальные стили
-const styleSheet = document.createElement("style");
-styleSheet.textContent = globalStyles;
-document.head.appendChild(styleSheet);
+if (typeof document !== 'undefined') {
+    const styleSheet = document.createElement("style");
+    styleSheet.textContent = globalStyles;
+    document.head.appendChild(styleSheet);
+}
 
 export default LoginPage;
