@@ -7,7 +7,8 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminLayout from './layouts/AdminLayout';
 import UserLayout from './layouts/UserLayout';
-import LoginPage from './pages/Auth/LoginPage'; // <-- ЭТОТ ИМПОРТ ДОЛЖЕН БЫТЬ!
+import LoginPage from './pages/Auth/LoginPage';
+import RegisterPage from './pages/Auth/RegisterPage';
 
 function App() {
     return (
@@ -16,7 +17,10 @@ function App() {
                 <div style={{ minHeight: '100vh', backgroundColor: '#fafafa' }}>
                     <Routes>
                         {/* Public route - ВХОД */}
-                        <Route path="/login" element={<LoginPage />} /> {/* <-- ЭТОТ РОУТ ДОЛЖЕН БЫТЬ! */}
+                        <Route path="/login" element={<LoginPage />} />
+
+                        {/* Public route - РЕГИСТРАЦИЯ */}
+                        <Route path="/register" element={<RegisterPage />} />
 
                         {/* Protected Admin routes */}
                         <Route path="/admin/*" element={

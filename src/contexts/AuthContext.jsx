@@ -1,9 +1,10 @@
-// src/contexts/AuthContext.jsx - ДЛЯ РЕАЛЬНОГО БЭКА
+
 import { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { login as apiLogin } from '../services/api';
 
 const AuthContext = createContext();
+const API_URL = 'http://localhost:8082/api';
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
@@ -35,28 +36,20 @@ export const AuthProvider = ({ children }) => {
 
     const login = async (credentials) => {
         setLoading(true);
-
         try {
             console.log('🔐 Attempting REAL backend auth...');
-
-            // Вызов реального бэкенда
             const response = await apiLogin(credentials);
-
-            // Ожидаем структуру как в curl ответе
             const { accessToken, refreshToken } = response.data;
 
             if (!accessToken) {
                 throw new Error('No access token received');
             }
 
-            // Сохраняем токены
             localStorage.setItem('token', accessToken);
             if (refreshToken) {
                 localStorage.setItem('refreshToken', refreshToken);
             }
 
-            // Извлекаем информацию о пользователе из токена или создаем
-            // Предполагаем, что username правильный
             const userData = {
                 username: credentials.username,
                 role: credentials.username === 'admin' ? 'admin' : 'user',
@@ -66,20 +59,15 @@ export const AuthProvider = ({ children }) => {
 
             localStorage.setItem('user', JSON.stringify(userData));
             setUser(userData);
-
-            // Редирект
             navigate(`/${userData.role}/dashboard`);
-
             return { success: true, user: userData };
 
         } catch (error) {
             console.error('❌ Backend auth failed:', error);
-
             let errorMessage = 'Ошибка авторизации';
 
             if (error.response) {
                 const { status, data } = error.response;
-
                 if (status === 401) {
                     errorMessage = 'Неверный логин или пароль';
                 } else if (status === 404) {
@@ -97,7 +85,6 @@ export const AuthProvider = ({ children }) => {
 
             alert(errorMessage);
             return { success: false, error: errorMessage };
-
         } finally {
             setLoading(false);
         }
@@ -111,11 +98,35 @@ export const AuthProvider = ({ children }) => {
         navigate('/login');
     };
 
+    const register = async (userData) => {
+        try {
+            const response = await fetch(`${API_URL}/users/register`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(userData)
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                return {
+                    success: false,
+                    error: data.message || data.errors?.[0] || 'Ошибка регистрации'
+                };
+            }
+            return { success: true, data };
+        } catch (err) {
+            console.error('Register error:', err);
+            return { success: false, error: 'Ошибка соединения с сервером' };
+        }
+    };
+
     const value = {
         user,
         loading,
         login,
         logout,
+        register,
         isAuthenticated: !!user
     };
 

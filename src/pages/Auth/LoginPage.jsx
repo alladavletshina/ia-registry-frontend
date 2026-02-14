@@ -1,6 +1,6 @@
-// LoginPage.jsx - для РЕАЛЬНОЙ авторизации
+// src/pages/Auth/LoginPage.jsx
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
 const LoginPage = () => {
@@ -10,12 +10,10 @@ const LoginPage = () => {
     const [error, setError] = useState('');
 
     const { login } = useAuth();
-    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // Валидация
         if (!username.trim() || !password.trim()) {
             setError('Введите логин и пароль');
             return;
@@ -100,7 +98,7 @@ const LoginPage = () => {
                 </form>
 
                 <div style={styles.testButtons}>
-                    <p style={styles.testTitle}>Тестовые учетные данные:</p>
+                    <p style={styles.testTitle}>Тестовые учётные данные:</p>
                     <div style={styles.buttonGroup}>
                         <button
                             type="button"
@@ -122,6 +120,10 @@ const LoginPage = () => {
                         </button>
                     </div>
                 </div>
+
+                <div style={styles.registerLink}>
+                    Нет аккаунта? <Link to="/register">Зарегистрироваться</Link>
+                </div>
             </div>
         </div>
     );
@@ -137,39 +139,24 @@ const styles = {
         padding: '20px'
     },
     card: {
-        background: 'var(--surface)',
-        borderRadius: 'var(--radius-xl)',
+        background: 'white',
+        borderRadius: '20px',
         padding: '40px',
         width: '100%',
         maxWidth: '450px',
-        boxShadow: 'var(--shadow-xl)',
-        border: '1px solid var(--border)'
+        boxShadow: '0 10px 40px rgba(0,0,0,0.1)',
+        border: '1px solid #e2e8f0'
     },
     title: {
         textAlign: 'center',
         marginBottom: '32px',
-        color: 'var(--text-dark)',
+        color: '#2d3748',
         fontSize: '28px',
         fontWeight: '700',
-        background: 'linear-gradient(135deg, var(--primary-500), var(--primary-700))',
+        background: 'linear-gradient(135deg, #667eea, #764ba2)',
         WebkitBackgroundClip: 'text',
         WebkitTextFillColor: 'transparent',
         backgroundClip: 'text'
-    },
-    subtitle: {
-        textAlign: 'center',
-        color: 'var(--text-light)',
-        marginBottom: '30px',
-        fontSize: '16px'
-    },
-    backendInfo: {
-        background: 'var(--bg-light)',
-        padding: '12px 16px',
-        borderRadius: 'var(--radius-md)',
-        marginBottom: '25px',
-        border: '1px solid var(--border)',
-        fontSize: '13px',
-        color: 'var(--text-light)'
     },
     form: {
         marginBottom: '25px'
@@ -180,43 +167,44 @@ const styles = {
     label: {
         display: 'block',
         marginBottom: '8px',
-        color: 'var(--text-dark)',
+        color: '#2d3748',
         fontSize: '14px',
         fontWeight: '500'
     },
     input: {
         width: '100%',
         padding: '14px 16px',
-        border: '1px solid var(--border)',
-        borderRadius: 'var(--radius-md)',
+        border: '1px solid #e2e8f0',
+        borderRadius: '8px',
         fontSize: '16px',
         boxSizing: 'border-box',
         transition: 'border-color 0.3s',
-        backgroundColor: 'var(--bg-light)'
+        backgroundColor: '#fafafa'
     },
     error: {
-        background: 'var(--danger-100)',
-        color: 'var(--danger-500)',
+        background: '#fed7d7',
+        color: '#c53030',
         padding: '12px 16px',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: '8px',
         marginBottom: '20px',
-        border: '1px solid var(--danger-100)',
+        border: '1px solid #feb2b2',
         fontSize: '14px'
     },
     button: {
         width: '100%',
         padding: '16px',
-        background: 'linear-gradient(135deg, var(--primary-500), var(--primary-600))',
+        background: 'linear-gradient(135deg, #667eea, #764ba2)',
         color: 'white',
         border: 'none',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: '8px',
         fontSize: '16px',
         fontWeight: '600',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: '10px',
-        transition: 'all 0.3s'
+        transition: 'all 0.3s',
+        cursor: 'pointer'
     },
     spinner: {
         width: '18px',
@@ -231,7 +219,7 @@ const styles = {
         textAlign: 'center'
     },
     testTitle: {
-        color: 'var(--text-light)',
+        color: '#718096',
         marginBottom: '12px',
         fontSize: '14px'
     },
@@ -242,10 +230,10 @@ const styles = {
     testButton: {
         flex: 1,
         padding: '14px',
-        background: 'var(--warning)',
+        background: '#f0ad4e',
         color: 'white',
         border: 'none',
-        borderRadius: 'var(--radius-md)',
+        borderRadius: '8px',
         cursor: 'pointer',
         fontSize: '14px',
         display: 'flex',
@@ -257,10 +245,15 @@ const styles = {
         fontSize: '11px',
         opacity: 0.9,
         fontFamily: 'monospace'
+    },
+    registerLink: {
+        textAlign: 'center',
+        marginTop: '20px',
+        color: '#718096'
     }
 };
 
-// Глобальные стили
+// Глобальные стили для анимации
 const globalStyles = `
     @keyframes spin {
         0% { transform: rotate(0deg); }
@@ -269,8 +262,8 @@ const globalStyles = `
     
     input:focus {
         outline: none;
-        border-color: var(--primary-500);
-        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
     }
     
     button:disabled {
@@ -279,7 +272,7 @@ const globalStyles = `
     }
 `;
 
-// Добавляем глобальные стили
+// Добавляем глобальные стили (если не были добавлены ранее)
 if (typeof document !== 'undefined') {
     const styleSheet = document.createElement("style");
     styleSheet.textContent = globalStyles;
