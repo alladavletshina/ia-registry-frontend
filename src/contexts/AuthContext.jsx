@@ -1,9 +1,15 @@
-
 import { createContext, useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { login as apiLogin } from '../services/api';
+import { jwtDecode } from 'jwt-decode';
 
 const AuthContext = createContext();
+
+// Конфигурация Keycloak
+const KEYCLOAK_URL = 'http://localhost:8080';
+const REALM = 'asset-management';
+const CLIENT_ID = 'frontend-app';
+
+// URL для регистрации (user-service)
 const API_URL = 'http://localhost:8082/api';
 
 export const useAuth = () => {
@@ -34,53 +40,65 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
     }, []);
 
-    const login = async (credentials) => {
+    const login = async ({ username, password }) => {
         setLoading(true);
         try {
-            console.log('🔐 Attempting REAL backend auth...');
-            const response = await apiLogin(credentials);
-            const { accessToken, refreshToken } = response.data;
+            const params = new URLSearchParams();
+            params.append('grant_type', 'password');
+            params.append('client_id', CLIENT_ID);
+            params.append('username', username);
+            params.append('password', password);
 
-            if (!accessToken) {
-                throw new Error('No access token received');
+            const response = await fetch(`${KEYCLOAK_URL}/realms/${REALM}/protocol/openid-connect/token`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params
+            });
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(`Auth failed: ${response.status} ${errorData}`);
             }
 
-            localStorage.setItem('token', accessToken);
-            if (refreshToken) {
-                localStorage.setItem('refreshToken', refreshToken);
-            }
+            const data = await response.json();
+            const { access_token, refresh_token } = data;
+
+            // Декодируем токен, чтобы получить информацию о пользователе
+            const decoded = jwtDecode(access_token);
+
+            // Извлечение ролей (зависит от настроек Keycloak)
+            const realmAccess = decoded.realm_access || {};
+            const roles = realmAccess.roles || [];
+            // Определяем роль: если есть 'admin' — админ, иначе обычный пользователь
+            const role = roles.includes('admin') ? 'admin' : 'user';
 
             const userData = {
-                username: credentials.username,
-                role: credentials.username === 'admin' ? 'admin' : 'user',
-                fullName: credentials.username === 'admin' ? 'Administrator' : 'User',
-                email: `${credentials.username}@example.com`
+                username: decoded.preferred_username || username,
+                email: decoded.email || `${username}@example.com`,
+                fullName: decoded.name || (roles.includes('admin') ? 'Administrator' : 'User'),
+                role,
+                token: access_token,
+                refreshToken: refresh_token
             };
 
+            localStorage.setItem('token', access_token);
+            if (refresh_token) localStorage.setItem('refreshToken', refresh_token);
             localStorage.setItem('user', JSON.stringify(userData));
+
             setUser(userData);
-            navigate(`/${userData.role}/dashboard`);
+            navigate(`/${role}/dashboard`);
             return { success: true, user: userData };
 
         } catch (error) {
-            console.error('❌ Backend auth failed:', error);
+            console.error('❌ Keycloak login failed:', error);
             let errorMessage = 'Ошибка авторизации';
 
-            if (error.response) {
-                const { status, data } = error.response;
-                if (status === 401) {
-                    errorMessage = 'Неверный логин или пароль';
-                } else if (status === 404) {
-                    errorMessage = 'Сервер авторизации не найден';
-                } else if (status === 500) {
-                    errorMessage = 'Внутренняя ошибка сервера';
-                } else if (data?.message) {
-                    errorMessage = data.message;
-                }
+            if (error.message.includes('401')) {
+                errorMessage = 'Неверный логин или пароль';
             } else if (error.message.includes('Network Error')) {
-                errorMessage = 'Сервер недоступен. Проверьте что бэкенд запущен на localhost:8083';
-            } else if (error.message.includes('timeout')) {
-                errorMessage = 'Таймаут подключения к серверу';
+                errorMessage = 'Сервер Keycloak недоступен';
+            } else {
+                errorMessage = error.message;
             }
 
             alert(errorMessage);
