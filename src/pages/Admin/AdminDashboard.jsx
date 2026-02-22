@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import assetApi from '../../services/assetApi';
-import { mockAssets, mockUsers } from '../../mockData';
+import userApi from '../../services/userApi';
 import '../../styles/prototype.css';
 
 const AdminDashboard = () => {

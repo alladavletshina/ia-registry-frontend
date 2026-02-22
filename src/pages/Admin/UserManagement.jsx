@@ -24,7 +24,7 @@ import {
     Search,
     Add
 } from '@mui/icons-material';
-import { mockUsersAPI } from '../../services/mockApi';
+import userApi from '../../services/userApi';
 import '../../styles/prototype.css';
 
 const UserManagement = () => {
@@ -59,9 +59,13 @@ const UserManagement = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const response = await mockUsersAPI.getAll();
-            setUsers(response.data.map(user => ({ ...user, isActive: true })));
-            setFilteredUsers(response.data.map(user => ({ ...user, isActive: true })));
+            const data = await userApi.getAll();
+            const usersWithActive = data.map(user => ({
+                ...user,
+                isActive: user.active !== undefined ? user.active : true
+            }));
+            setUsers(usersWithActive);
+            setFilteredUsers(usersWithActive);
         } catch (error) {
             console.error('Ошибка загрузки пользователей:', error);
         } finally {
@@ -100,7 +104,7 @@ const UserManagement = () => {
 
     const toggleUserActive = async (id, isActive) => {
         try {
-            await mockUsersAPI.update(id, { isActive });
+            await userApi.update(id, { active: isActive });
             setUsers(users.map(user =>
                 user.id === id ? { ...user, isActive } : user
             ));
@@ -111,8 +115,9 @@ const UserManagement = () => {
 
     const handleCreateUser = async () => {
         try {
-            const response = await mockUsersAPI.create(newUser);
-            setUsers([...users, response.data]);
+            const createdUser = await userApi.create(newUser);
+
+            setUsers([...users, { ...createdUser, isActive: createdUser.active ?? true }]);
             setShowCreateModal(false);
             setNewUser({
                 username: '',
@@ -190,12 +195,7 @@ const UserManagement = () => {
             width: 70
         },
         {
-            field: 'username',
-            headerName: 'Логин',
-            width: 120
-        },
-        {
-            field: 'fullName',
+            field: 'lastName',
             headerName: 'ФИО',
             width: 200
         },
