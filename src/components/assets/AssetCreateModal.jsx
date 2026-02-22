@@ -18,13 +18,26 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
     });
 
     const handleSubmit = () => {
-        // Валидация
         if (!formData.name.trim()) {
             alert('Пожалуйста, укажите наименование актива');
             return;
         }
 
-        onSave(formData);
+        const requestData = {
+            name: formData.name,
+            category: formData.category || null,
+            // ownerId пока не передаём (сервер может проставить текущего пользователя)
+            status: statusMap[formData.status] || 'ACTIVE',
+            confidentiality: ciaMap[formData.confidentiality] || 'MEDIUM',
+            integrity: ciaMap[formData.integrity] || 'MEDIUM',
+            availability: ciaMap[formData.availability] || 'MEDIUM',
+            lastReview: new Date().toISOString().split('T')[0], // текущая дата
+            description: formData.description || '',
+            location: formData.location || '',
+            tags: '' // пока пусто, можно добавить поле позже
+        };
+
+        onSave(requestData);
     };
 
     const handleChange = (field, value) => {
@@ -32,6 +45,20 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
             ...prev,
             [field]: value
         }));
+    };
+
+    const statusMap = {
+        active: 'ACTIVE',
+        needs_review: 'NEEDS_REVIEW',
+        archived: 'ARCHIVED',
+        draft: 'DRAFT'
+    };
+
+    const ciaMap = {
+        low: 'LOW',
+        medium: 'MEDIUM',
+        high: 'HIGH',
+        critical: 'CRITICAL'
     };
 
     return (

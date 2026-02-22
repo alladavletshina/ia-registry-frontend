@@ -1,7 +1,7 @@
 // src/pages/Admin/AdminDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
-import { mockAssetsAPI, mockUsersAPI } from '../../services/mockApi';
+import assetApi from '../../services/assetApi';
 import { mockAssets, mockUsers } from '../../mockData';
 import '../../styles/prototype.css';
 
@@ -23,8 +23,8 @@ const AdminDashboard = () => {
     const loadDashboardData = async () => {
         try {
             // Получаем данные
-            const assetsResponse = await mockAssetsAPI.getAll();
-            const usersResponse = await mockUsersAPI.getAll();
+            const assetsResponse = await assetApi.getAll();
+            const usersResponse = await assetApi.getAll();
             const assets = assetsResponse.data;
 
             // Рассчитываем статистику

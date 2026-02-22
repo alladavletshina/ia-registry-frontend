@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { mockAssetsAPI } from '../../services/mockApi';
+import assetApi from '../../services/assetApi';
 import StatusBadge from '../../components/common/StatusBadge';
 
 const AssetDetail = () => {
@@ -14,10 +14,11 @@ const AssetDetail = () => {
 
     const loadAsset = async () => {
         try {
-            const response = await mockAssetsAPI.getById(id);
-            setAsset(response.data);
+            const data = await assetApi.getById(id);
+            setAsset(data);
         } catch (error) {
             console.error('Ошибка загрузки актива:', error);
+
         } finally {
             setLoading(false);
         }

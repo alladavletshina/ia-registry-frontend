@@ -1,7 +1,7 @@
 // src/pages/Admin/AssetRegistry.jsx
 import React, { useState, useEffect } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
-import { mockAssetsAPI } from '../../services/mockApi';
+import assetApi from '../../services/assetApi';
 import StatusBadge from '../../components/common/StatusBadge';
 import AssetCreateModal from '../../components/assets/AssetCreateModal';
 import '../../styles/prototype.css';
@@ -20,8 +20,8 @@ const AssetRegistry = () => {
     const fetchAssets = async () => {
         setLoading(true);
         try {
-            const response = await mockAssetsAPI.getAll(filters);
-            setAssets(response.data);
+            const data = await assetApi.getAll(filters);
+            setAssets(data);
         } catch (error) {
             console.error('Ошибка загрузки активов:', error);
         } finally {
@@ -37,7 +37,7 @@ const AssetRegistry = () => {
     const handleDelete = async (id) => {
         if (window.confirm('Вы уверены, что хотите удалить этот актив?')) {
             try {
-                await mockAssetsAPI.delete(id);
+                await assetApi.delete(id);
                 fetchAssets();
             } catch (error) {
                 console.error('Ошибка удаления:', error);
@@ -176,9 +176,9 @@ const AssetRegistry = () => {
                     onSave={async (assetData) => {
                         try {
                             if (selectedAsset) {
-                                await mockAssetsAPI.update(selectedAsset.id, assetData);
+                                await assetApi.update(selectedAsset.id, assetData);
                             } else {
-                                await mockAssetsAPI.create(assetData);
+                                await assetApi.create(assetData);
                             }
                             fetchAssets();
                             setShowCreateModal(false);

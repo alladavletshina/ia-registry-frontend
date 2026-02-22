@@ -13,7 +13,7 @@ import {
     CalendarToday,
     Category
 } from '@mui/icons-material';
-import { mockAssetsAPI } from '../../services/mockApi';
+import assetApi from '../../services/assetApi';
 import StatusBadge from '../../components/common/StatusBadge';
 import '../../styles/prototype.css';
 
@@ -38,29 +38,11 @@ const AssetView = () => {
     const loadAsset = async () => {
         setLoading(true);
         try {
-            const response = await mockAssetsAPI.getById(id);
-            // Добавляем моковые данные для демонстрации
-            const enrichedAsset = {
-                ...response.data,
-                createdBy: 'Администратор Системы',
-                createdAt: '2024-01-15',
-                lastModified: '2024-01-30',
-                lastModifiedBy: 'Иванов И.И.',
-                tags: ['важный', 'база_данных', 'клиенты'],
-                dependencies: ['CRM система', 'Система отчетности'],
-                storageLocation: 'Сервер БД-01',
-                backupSchedule: 'Ежедневно в 23:00',
-                retentionPeriod: '5 лет',
-                compliance: ['GDPR', 'ФЗ-152'],
-                accessControl: 'Ролевая модель',
-                riskLevel: 'medium',
-                riskAssessment: '2024-02-15',
-                version: '2.1',
-                costEstimate: 'Высокая'
-            };
-            setAsset(enrichedAsset);
+            const data = await assetApi.getById(id);
+            setAsset(data);
         } catch (error) {
             console.error('Ошибка загрузки актива:', error);
+
         } finally {
             setLoading(false);
         }
