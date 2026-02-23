@@ -59,13 +59,18 @@ const UserManagement = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const data = await userApi.getAll();
-            const usersWithActive = data.map(user => ({
-                ...user,
-                isActive: user.active !== undefined ? user.active : true
+            const data = await userApi.getAll(); // массив объектов с сервера
+            const mappedUsers = data.map(user => ({
+                id: user.id,
+                fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
+                email: user.email,
+                department: user.department || '',
+                role: user.role || 'user',
+                isActive: user.active === true,
+                lastLogin: user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : null
             }));
-            setUsers(usersWithActive);
-            setFilteredUsers(usersWithActive);
+            setUsers(mappedUsers);
+            setFilteredUsers(mappedUsers);
         } catch (error) {
             console.error('Ошибка загрузки пользователей:', error);
         } finally {
@@ -78,11 +83,12 @@ const UserManagement = () => {
 
         if (filters.search) {
             const searchTerm = filters.search.toLowerCase();
-            filtered = filtered.filter(user =>
-                user.username.toLowerCase().includes(searchTerm) ||
-                user.fullName.toLowerCase().includes(searchTerm) ||
-                user.email.toLowerCase().includes(searchTerm)
-            );
+            filtered = filtered.filter(user => {
+                const fullName = user.fullName || '';
+                const email = user.email || '';
+                return fullName.toLowerCase().includes(searchTerm) ||
+                    email.toLowerCase().includes(searchTerm);
+            });
         }
 
         if (filters.role !== 'all') {
@@ -195,7 +201,7 @@ const UserManagement = () => {
             width: 70
         },
         {
-            field: 'lastName',
+            field: 'fullName',
             headerName: 'ФИО',
             width: 200
         },
@@ -296,7 +302,7 @@ const UserManagement = () => {
                         }}>
                             <TextField
                                 size="small"
-                                placeholder="Поиск по ФИО, логину, email..."
+                                placeholder="Поиск по ФИО, email..."
                                 value={filters.search}
                                 onChange={(e) => setFilters({...filters, search: e.target.value})}
                                 InputProps={{
