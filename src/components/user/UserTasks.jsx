@@ -16,10 +16,14 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import taskApi from '../../services/taskApi';
+import userApi from '../../services/userApi'; // импортируем userApi
 import '../../styles/prototype.css';
 
 const UserTasks = () => {
-    const { user } = useAuth(); // получаем пользователя и его роль
+    const { user } = useAuth();
+    // Внутренний UUID пользователя из user-service
+    const [internalUserId, setInternalUserId] = useState(null);
+    const [profileError, setProfileError] = useState(false);
     const [tasks, setTasks] = useState([]);
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
@@ -35,16 +39,43 @@ const UserTasks = () => {
     const [newTask, setNewTask] = useState({
         title: '',
         description: '',
-        priority: 'MEDIUM', // бэкенд ожидает HIGH, MEDIUM, LOW
+        priority: 'MEDIUM',
         dueDate: '',
         assetId: null
     });
 
+    // 1. Загружаем профиль пользователя при монтировании компонента
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const profile = await userApi.getCurrentUser(); // ожидаем объект с полем id
+                setInternalUserId(profile.id);
+                setProfileError(false);
+            } catch (error) {
+                console.error('Не удалось загрузить профиль пользователя', error);
+                setProfileError(true);
+            }
+        };
+        fetchUserProfile();
+    }, []);
+
     const loadTasks = useCallback(async () => {
         setLoading(true);
         try {
-            // Загружаем все задачи (можно добавить фильтр по search)
-            const data = await taskApi.getAll({ search });
+            // Формируем параметры запроса
+            const params = {};
+            if (internalUserId) {
+                params.userId = internalUserId; // используем внутренний ID
+            }
+            if (search) {
+                params.search = search;
+            }
+            // Убираем пустые значения
+            const cleanParams = Object.fromEntries(
+                Object.entries(params).filter(([_, v]) => v != null && v !== '')
+            );
+            console.log('Параметры запроса задач:', cleanParams);
+            const data = await taskApi.getAll(cleanParams);
             setTasks(data);
         } catch (error) {
             console.error('Ошибка загрузки задач:', error);
@@ -52,7 +83,7 @@ const UserTasks = () => {
         } finally {
             setLoading(false);
         }
-    }, [search]);
+    }, [search, internalUserId]);
 
     const loadStats = useCallback(async () => {
         try {
@@ -63,12 +94,15 @@ const UserTasks = () => {
         }
     }, []);
 
+    // 2. Загружаем задачи только когда известен internalUserId
     useEffect(() => {
-        loadTasks();
-        loadStats();
-    }, [loadTasks, loadStats]);
+        if (internalUserId) {
+            loadTasks();
+            loadStats();
+        }
+    }, [loadTasks, loadStats, internalUserId]);
 
-    // Фильтрация на клиенте (можно заменить на серверную, если добавите параметры)
+    // Фильтрация на клиенте (поиск и статус)
     const filteredTasks = tasks.filter(task => {
         if (filter !== 'all') {
             if (filter === 'overdue') {
@@ -81,7 +115,6 @@ const UserTasks = () => {
                 return false;
             }
         }
-        // Поиск по названию, описанию, тегам
         if (search) {
             const searchLower = search.toLowerCase();
             return (
@@ -110,16 +143,17 @@ const UserTasks = () => {
             return;
         }
         try {
-            // type и estimatedTime можно задать по умолчанию
             const taskData = {
                 title: newTask.title,
                 description: newTask.description,
                 priority: newTask.priority,
                 dueDate: newTask.dueDate,
-                type: 'UPDATE', // или можно добавить выбор в форму
-                estimatedTime: '2 часа', // заглушка
+                type: 'UPDATE',
+                estimatedTime: '2 часа',
                 tags: [],
                 assetId: newTask.assetId
+                // Если задача должна назначаться на текущего пользователя, добавьте:
+                // assignedTo: internalUserId
             };
             await taskApi.create(taskData);
             setShowCreateModal(false);
@@ -146,7 +180,6 @@ const UserTasks = () => {
     };
 
     const exportTasks = () => {
-        // ... (без изменений, экспорт на основе filteredTasks)
         const csvContent = [
             ['ID', 'Название', 'Статус', 'Приоритет', 'Срок', 'Тип', 'Назначена', 'Создана'].join(','),
             ...filteredTasks.map(task => [
@@ -225,7 +258,7 @@ const UserTasks = () => {
         return due < today;
     };
 
-    if (loading) {
+    if (loading && !internalUserId && !profileError) {
         return (
             <div className="loading-container">
                 <div className="loading-spinner"></div>
@@ -234,7 +267,17 @@ const UserTasks = () => {
         );
     }
 
-    const isAdmin = user?.role === 'admin'; // предполагаем, что в user.role хранится строка
+    if (profileError) {
+        return (
+            <div className="empty-state">
+                <Warning style={{ fontSize: 48, color: '#ef4444' }} />
+                <h4>Ошибка загрузки профиля</h4>
+                <p>Не удалось получить информацию о пользователе. Попробуйте обновить страницу.</p>
+            </div>
+        );
+    }
+
+    const isAdmin = user?.role === 'admin';
 
     return (
         <div className="user-tasks-container">
@@ -333,7 +376,7 @@ const UserTasks = () => {
                         >
                             <Download /> Экспорт
                         </button>
-                        {isAdmin && ( // показываем кнопку только админам
+                        {isAdmin && (
                             <button
                                 className="btn btn-primary"
                                 onClick={() => setShowCreateModal(true)}
@@ -522,7 +565,6 @@ const UserTasks = () => {
                                                     onClick={() => {
                                                         const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate);
                                                         if (newDate) {
-                                                            // TODO: реализовать продление срока через PATCH
                                                             alert('Функция продления срока пока не реализована');
                                                         }
                                                     }}

@@ -19,6 +19,16 @@ userApi.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
+export const getCurrentUser = async () => {
+    try {
+        const response = await userApi.get('/me');
+        return response.data;
+    } catch (error) {
+        console.error('Ошибка загрузки текущего пользователя:', error);
+        throw error;
+    }
+};
+
 export const getAllUsers = async () => {
     try {
         const response = await userApi.get();
@@ -83,4 +93,5 @@ export default {
     create: createUser,
     update: updateUser,
     delete: deleteUser,
+    getCurrentUser,
 };

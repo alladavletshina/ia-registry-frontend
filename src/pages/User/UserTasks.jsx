@@ -1,82 +1,692 @@
-// src/pages/User/TasksPage.jsx
-import React from 'react';
-import UserTasks from '../../components/user/UserTasks';
+// src/components/user/UserTasks.jsx
+import React, { useState, useEffect, useCallback } from 'react';
+import {
+    CheckCircle,
+    HourglassEmpty,
+    Warning,
+    Assignment,
+    FilterList,
+    Download,
+    Add,
+    Delete,
+    Visibility,
+    CalendarToday,
+    PriorityHigh,
+    Person
+} from '@mui/icons-material';
+import { useAuth } from '../../contexts/AuthContext';
+import taskApi from '../../services/taskApi';
+import userApi from '../../services/userApi'; // импортируем userApi
 import '../../styles/prototype.css';
 
-const TasksPage = () => {
-    return (
-        <div className="tasks-page">
-            <div className="content-header">
-                <h1>Мои задачи</h1>
-                <div className="header-actions">
-                    <span className="welcome-text">
-                        Управление задачами по информационным активам
-                    </span>
-                </div>
+const UserTasks = () => {
+    const { user } = useAuth();
+
+    const [internalUserId, setInternalUserId] = useState(null);
+    const [profileError, setProfileError] = useState(false);
+    const [tasks, setTasks] = useState([]);
+    const [filter, setFilter] = useState('all');
+    const [search, setSearch] = useState('');
+    const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        total: 0,
+        pending: 0,
+        inProgress: 0,
+        completed: 0,
+        overdue: 0
+    });
+    const [showCreateModal, setShowCreateModal] = useState(false);
+    const [newTask, setNewTask] = useState({
+        title: '',
+        description: '',
+        priority: 'MEDIUM',
+        dueDate: '',
+        assetId: null
+    });
+
+    // 1. Загружаем профиль пользователя при монтировании компонента
+    useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const profile = await userApi.getCurrentUser(); // ожидаем объект с полем id
+                setInternalUserId(profile.id);
+                setProfileError(false);
+            } catch (error) {
+                console.error('Не удалось загрузить профиль пользователя', error);
+                setProfileError(true);
+            }
+        };
+        fetchUserProfile();
+    }, []);
+
+    const loadTasks = useCallback(async () => {
+        setLoading(true);
+        try {
+            // Формируем параметры запроса
+            const params = {};
+            if (internalUserId) {
+                params.userId = internalUserId; // используем внутренний ID
+            }
+            if (search) {
+                params.search = search;
+            }
+            // Убираем пустые значения
+            const cleanParams = Object.fromEntries(
+                Object.entries(params).filter(([_, v]) => v != null && v !== '')
+            );
+            console.log('Параметры запроса задач:', cleanParams);
+            const data = await taskApi.getAll(cleanParams);
+            setTasks(data);
+        } catch (error) {
+            console.error('Ошибка загрузки задач:', error);
+            alert('Не удалось загрузить задачи');
+        } finally {
+            setLoading(false);
+        }
+    }, [search, internalUserId]);
+
+    const loadStats = useCallback(async () => {
+        try {
+            const data = await taskApi.getStats();
+            setStats(data);
+        } catch (error) {
+            console.error('Ошибка загрузки статистики:', error);
+        }
+    }, []);
+
+    // 2. Загружаем задачи только когда известен internalUserId
+    useEffect(() => {
+        if (internalUserId) {
+            loadTasks();
+            loadStats();
+        }
+    }, [loadTasks, loadStats, internalUserId]);
+
+    // Фильтрация на клиенте (поиск и статус)
+    const filteredTasks = tasks.filter(task => {
+        if (filter !== 'all') {
+            if (filter === 'overdue') {
+                const today = new Date();
+                const dueDate = new Date(task.dueDate);
+                if (!(dueDate < today && task.status !== 'COMPLETED')) {
+                    return false;
+                }
+            } else if (filter !== task.status) {
+                return false;
+            }
+        }
+        if (search) {
+            const searchLower = search.toLowerCase();
+            return (
+                task.title?.toLowerCase().includes(searchLower) ||
+                task.description?.toLowerCase().includes(searchLower) ||
+                task.tags?.some(tag => tag.toLowerCase().includes(searchLower))
+            );
+        }
+        return true;
+    });
+
+    const updateTaskStatus = async (taskId, newStatus) => {
+        try {
+            await taskApi.patch(taskId, { status: newStatus });
+            await loadTasks();
+            await loadStats();
+        } catch (error) {
+            console.error('Ошибка обновления статуса:', error);
+            alert('Не удалось обновить статус задачи');
+        }
+    };
+
+    const createTask = async () => {
+        if (!newTask.title.trim()) {
+            alert('Введите название задачи');
+            return;
+        }
+        try {
+            const taskData = {
+                title: newTask.title,
+                description: newTask.description,
+                priority: newTask.priority,
+                dueDate: newTask.dueDate,
+                type: 'UPDATE',
+                estimatedTime: '2 часа',
+                tags: [],
+                assetId: newTask.assetId
+                // Если задача должна назначаться на текущего пользователя, добавьте:
+                // assignedTo: internalUserId
+            };
+            await taskApi.create(taskData);
+            setShowCreateModal(false);
+            setNewTask({ title: '', description: '', priority: 'MEDIUM', dueDate: '', assetId: null });
+            await loadTasks();
+            await loadStats();
+        } catch (error) {
+            console.error('Ошибка создания задачи:', error);
+            alert('Не удалось создать задачу');
+        }
+    };
+
+    const deleteTask = async (taskId) => {
+        if (window.confirm('Вы уверены, что хотите удалить эту задачу?')) {
+            try {
+                await taskApi.delete(taskId);
+                await loadTasks();
+                await loadStats();
+            } catch (error) {
+                console.error('Ошибка удаления задачи:', error);
+                alert('Не удалось удалить задачу');
+            }
+        }
+    };
+
+    const exportTasks = () => {
+        const csvContent = [
+            ['ID', 'Название', 'Статус', 'Приоритет', 'Срок', 'Тип', 'Назначена', 'Создана'].join(','),
+            ...filteredTasks.map(task => [
+                task.id,
+                `"${task.title}"`,
+                getStatusText(task.status),
+                getPriorityText(task.priority),
+                task.dueDate,
+                getTypeText(task.type),
+                task.assignedBy,
+                task.createdAt
+            ].join(','))
+        ].join('\n');
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `tasks_${new Date().toISOString().split('T')[0]}.csv`;
+        a.click();
+    };
+
+    const getStatusIcon = (status) => {
+        switch(status) {
+            case 'PENDING': return <HourglassEmpty style={{ color: '#f59e0b' }} />;
+            case 'IN_PROGRESS': return <Assignment style={{ color: '#3b82f6' }} />;
+            case 'COMPLETED': return <CheckCircle style={{ color: '#10b981' }} />;
+            case 'OVERDUE': return <Warning style={{ color: '#ef4444' }} />;
+            default: return <HourglassEmpty />;
+        }
+    };
+
+    const getStatusText = (status) => {
+        const map = {
+            'PENDING': 'Ожидает',
+            'IN_PROGRESS': 'В работе',
+            'COMPLETED': 'Выполнена',
+            'OVERDUE': 'Просрочена'
+        };
+        return map[status] || status;
+    };
+
+    const getPriorityIcon = (priority) => {
+        switch(priority) {
+            case 'HIGH': return <PriorityHigh style={{ color: '#ef4444' }} />;
+            case 'MEDIUM': return <PriorityHigh style={{ color: '#f59e0b' }} />;
+            case 'LOW': return <PriorityHigh style={{ color: '#10b981' }} />;
+            default: return <PriorityHigh />;
+        }
+    };
+
+    const getPriorityText = (priority) => {
+        const map = { 'HIGH': 'Высокий', 'MEDIUM': 'Средний', 'LOW': 'Низкий' };
+        return map[priority] || priority;
+    };
+
+    const getTypeText = (type) => {
+        const map = {
+            'UPDATE': 'Обновление',
+            'REVIEW': 'Проверка',
+            'REPORT': 'Отчет',
+            'INVENTORY': 'Инвентаризация',
+            'BACKUP': 'Резервное копирование'
+        };
+        return map[type] || type;
+    };
+
+    const formatDate = (dateString) => {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('ru-RU');
+    };
+
+    const isOverdue = (dueDate, status) => {
+        if (status === 'COMPLETED') return false;
+        const today = new Date();
+        const due = new Date(dueDate);
+        return due < today;
+    };
+
+    if (loading && !internalUserId && !profileError) {
+        return (
+            <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Загрузка задач...</p>
             </div>
+        );
+    }
 
-            <div className="main-content">
-                <UserTasks />
+    if (profileError) {
+        return (
+            <div className="empty-state">
+                <Warning style={{ fontSize: 48, color: '#ef4444' }} />
+                <h4>Ошибка загрузки профиля</h4>
+                <p>Не удалось получить информацию о пользователе. Попробуйте обновить страницу.</p>
+            </div>
+        );
+    }
 
-                {/* Информационный блок */}
-                <div className="info-card mt-6">
-                    <div className="card">
-                        <div className="card-body">
-                            <h4>📌 Как работать с задачами:</h4>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '20px', marginTop: '16px' }}>
-                                <div>
-                                    <h5 style={{ color: 'var(--text-dark)', marginBottom: '8px' }}>1. Создание задачи</h5>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-light)' }}>
-                                        Нажмите "Новая задача" для создания задачи. Укажите название, описание, приоритет и срок выполнения.
-                                    </p>
-                                </div>
-                                <div>
-                                    <h5 style={{ color: 'var(--text-dark)', marginBottom: '8px' }}>2. Управление статусом</h5>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-light)' }}>
-                                        Используйте кнопки "Взять в работу", "Завершить" для изменения статуса задачи.
-                                    </p>
-                                </div>
-                                <div>
-                                    <h5 style={{ color: 'var(--text-dark)', marginBottom: '8px' }}>3. Фильтрация</h5>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-light)' }}>
-                                        Используйте фильтры по статусу и поиск для быстрого нахождения нужных задач.
-                                    </p>
-                                </div>
-                                <div>
-                                    <h5 style={{ color: 'var(--text-dark)', marginBottom: '8px' }}>4. Экспорт</h5>
-                                    <p style={{ fontSize: '13px', color: 'var(--text-light)' }}>
-                                        Экспортируйте задачи в CSV для создания отчетов и анализа.
-                                    </p>
-                                </div>
-                            </div>
+    const isAdmin = user?.role === 'admin';
 
-                            <div style={{ marginTop: '24px', padding: '16px', background: 'var(--bg-light)', borderRadius: 'var(--radius-md)' }}>
-                                <h5 style={{ color: 'var(--text-dark)', marginBottom: '8px' }}>Цветовые обозначения:</h5>
-                                <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap' }}>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '12px', height: '12px', background: '#10b981', borderRadius: '2px' }}></div>
-                                        <span style={{ fontSize: '13px' }}>Выполнено</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '2px' }}></div>
-                                        <span style={{ fontSize: '13px' }}>В работе</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '12px', height: '12px', background: '#f59e0b', borderRadius: '2px' }}></div>
-                                        <span style={{ fontSize: '13px' }}>Ожидает</span>
-                                    </div>
-                                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                        <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '2px' }}></div>
-                                        <span style={{ fontSize: '13px' }}>Просрочено</span>
-                                    </div>
-                                </div>
-                            </div>
+    return (
+        <div className="user-tasks-container">
+            {/* Статистика */}
+            <div className="stats-grid" style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '16px',
+                marginBottom: '24px'
+            }}>
+                <div className="stat-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <h4>Всего задач</h4>
+                            <p className="number" style={{ fontSize: '32px', margin: '8px 0' }}>{stats.total}</p>
                         </div>
+                        <Assignment style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <h4>В работе</h4>
+                            <p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#3b82f6' }}>{stats.inProgress}</p>
+                        </div>
+                        <HourglassEmpty style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <h4>Выполнено</h4>
+                            <p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#10b981' }}>{stats.completed}</p>
+                        </div>
+                        <CheckCircle style={{ fontSize: '32px', color: '#10b981', opacity: 0.7 }} />
+                    </div>
+                </div>
+                <div className="stat-card">
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                            <h4>Просрочено</h4>
+                            <p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#ef4444' }}>{stats.overdue}</p>
+                        </div>
+                        <Warning style={{ fontSize: '32px', color: '#ef4444', opacity: 0.7 }} />
                     </div>
                 </div>
             </div>
+
+            {/* Панель управления */}
+            <div className="control-panel" style={{
+                background: 'white',
+                padding: '20px',
+                borderRadius: 'var(--radius-lg)',
+                marginBottom: '24px',
+                border: '1px solid var(--border)'
+            }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+                    <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                        <div style={{ position: 'relative' }}>
+                            <input
+                                type="text"
+                                placeholder="Поиск задач..."
+                                className="input"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                style={{ width: '250px', paddingLeft: '40px' }}
+                            />
+                            <FilterList style={{
+                                position: 'absolute',
+                                left: '12px',
+                                top: '50%',
+                                transform: 'translateY(-50%)',
+                                color: '#94a3b8'
+                            }} />
+                        </div>
+
+                        <select
+                            className="input select"
+                            value={filter}
+                            onChange={(e) => setFilter(e.target.value)}
+                            style={{ width: '150px' }}
+                        >
+                            <option value="all">Все задачи</option>
+                            <option value="PENDING">Ожидающие</option>
+                            <option value="IN_PROGRESS">В работе</option>
+                            <option value="COMPLETED">Выполненные</option>
+                            <option value="overdue">Просроченные</option>
+                        </select>
+                    </div>
+
+                    <div style={{ display: 'flex', gap: '12px' }}>
+                        <button
+                            className="btn btn-secondary"
+                            onClick={exportTasks}
+                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                        >
+                            <Download /> Экспорт
+                        </button>
+                        {isAdmin && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => setShowCreateModal(true)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+                            >
+                                <Add /> Новая задача
+                            </button>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Список задач */}
+            <div className="tasks-list">
+                {filteredTasks.length === 0 ? (
+                    <div className="empty-state" style={{
+                        textAlign: 'center',
+                        padding: '60px 20px',
+                        background: 'var(--bg-light)',
+                        borderRadius: 'var(--radius-lg)',
+                        border: '1px solid var(--border)'
+                    }}>
+                        <Assignment style={{ fontSize: '48px', color: '#94a3b8', marginBottom: '16px' }} />
+                        <h4 style={{ color: '#64748b', marginBottom: '8px' }}>Нет задач</h4>
+                        <p style={{ color: '#94a3b8', marginBottom: '24px' }}>
+                            {search ? 'По вашему запросу задачи не найдены' : 'У вас пока нет назначенных задач'}
+                        </p>
+                        {isAdmin && (
+                            <button
+                                className="btn btn-primary"
+                                onClick={() => setShowCreateModal(true)}
+                            >
+                                Создать первую задачу
+                            </button>
+                        )}
+                    </div>
+                ) : (
+                    filteredTasks.map(task => (
+                        <div
+                            key={task.id}
+                            className="task-card"
+                            style={{
+                                background: 'white',
+                                borderRadius: 'var(--radius-lg)',
+                                border: '1px solid var(--border)',
+                                padding: '24px',
+                                marginBottom: '16px',
+                                transition: 'all var(--transition-fast)',
+                                position: 'relative',
+                                borderLeft: `4px solid ${
+                                    task.priority === 'HIGH' ? '#ef4444' :
+                                        task.priority === 'MEDIUM' ? '#f59e0b' : '#10b981'
+                                }`,
+                                boxShadow: isOverdue(task.dueDate, task.status) ? '0 0 0 2px rgba(239, 68, 68, 0.1)' : 'var(--shadow-sm)'
+                            }}
+                        >
+                            {isOverdue(task.dueDate, task.status) && (
+                                <div style={{
+                                    position: 'absolute',
+                                    top: '-8px',
+                                    right: '16px',
+                                    background: '#ef4444',
+                                    color: 'white',
+                                    padding: '4px 12px',
+                                    borderRadius: 'var(--radius-full)',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                }}>
+                                    <Warning fontSize="small" /> ПРОСРОЧЕНО
+                                </div>
+                            )}
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
+                                <div style={{ flex: 1 }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                        <h4 style={{ margin: 0, fontSize: '18px' }}>{task.title}</h4>
+                                        <div style={{ display: 'flex', gap: '8px' }}>
+                                            <span className={`badge badge-${task.priority === 'HIGH' ? 'danger' : task.priority === 'MEDIUM' ? 'warning' : 'success'}`}>
+                                                {getPriorityIcon(task.priority)} {getPriorityText(task.priority)}
+                                            </span>
+                                            <span className={`badge badge-${task.status === 'COMPLETED' ? 'success' : task.status === 'OVERDUE' ? 'danger' : task.status === 'IN_PROGRESS' ? 'primary' : 'warning'}`}>
+                                                {getStatusIcon(task.status)} {getStatusText(task.status)}
+                                            </span>
+                                            <span className="badge badge-secondary">
+                                                {getTypeText(task.type)}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <p style={{ color: 'var(--text-light)', marginBottom: '16px', lineHeight: 1.6 }}>
+                                        {task.description}
+                                    </p>
+
+                                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                                        {task.tags?.map((tag, index) => (
+                                            <span key={index} style={{
+                                                padding: '4px 10px',
+                                                background: 'var(--bg-light)',
+                                                borderRadius: 'var(--radius-full)',
+                                                fontSize: '12px',
+                                                color: 'var(--text-light)'
+                                            }}>
+                                                #{tag}
+                                            </span>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div style={{ textAlign: 'right', minWidth: '120px' }}>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-light)', marginBottom: '4px' }}>
+                                        <CalendarToday fontSize="small" /> Срок:
+                                    </div>
+                                    <div style={{
+                                        fontWeight: 'bold',
+                                        fontSize: '14px',
+                                        color: isOverdue(task.dueDate, task.status) ? '#ef4444' : 'inherit'
+                                    }}>
+                                        {formatDate(task.dueDate)}
+                                    </div>
+                                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
+                                        {task.estimatedTime}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
+                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <Person fontSize="small" style={{ color: '#64748b' }} />
+                                        <span style={{ fontSize: '13px', color: 'var(--text-light)' }}>
+                                            <strong>Назначил:</strong> {task.assignedBy}
+                                        </span>
+                                    </div>
+                                    {task.assetName && (
+                                        <div style={{ fontSize: '13px', color: 'var(--text-light)' }}>
+                                            <strong>Актив:</strong> {task.assetName}
+                                            {task.assetId && (
+                                                <a
+                                                    href={`/user/assets/${task.assetId}`}
+                                                    style={{ marginLeft: '8px', fontSize: '11px', textDecoration: 'none' }}
+                                                    onClick={(e) => {
+                                                        e.preventDefault();
+                                                        alert(`Переход к активу: ${task.assetName}`);
+                                                    }}
+                                                >
+                                                    перейти →
+                                                </a>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button
+                                        className="btn btn-sm btn-secondary"
+                                        onClick={() => alert(`Подробная информация о задаче: ${task.title}`)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                                    >
+                                        <Visibility fontSize="small" /> Подробнее
+                                    </button>
+
+                                    {task.status !== 'COMPLETED' && (
+                                        <>
+                                            {task.status === 'PENDING' && (
+                                                <button
+                                                    className="btn btn-sm btn-primary"
+                                                    onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}
+                                                >
+                                                    Взять в работу
+                                                </button>
+                                            )}
+                                            {task.status === 'IN_PROGRESS' && (
+                                                <button
+                                                    className="btn btn-sm btn-success"
+                                                    onClick={() => updateTaskStatus(task.id, 'COMPLETED')}
+                                                >
+                                                    Завершить
+                                                </button>
+                                            )}
+                                            {isOverdue(task.dueDate, task.status) && (
+                                                <button
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => {
+                                                        const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate);
+                                                        if (newDate) {
+                                                            alert('Функция продления срока пока не реализована');
+                                                        }
+                                                    }}
+                                                >
+                                                    Продлить срок
+                                                </button>
+                                            )}
+                                        </>
+                                    )}
+
+                                    {isAdmin && (
+                                        <button
+                                            className="btn btn-sm btn-danger"
+                                            onClick={() => deleteTask(task.id)}
+                                            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                                        >
+                                            <Delete fontSize="small" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))
+                )}
+            </div>
+
+            {/* Модальное окно создания задачи */}
+            {showCreateModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.5)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 1000
+                }}>
+                    <div style={{
+                        background: 'white',
+                        borderRadius: 'var(--radius-lg)',
+                        padding: '32px',
+                        width: '90%',
+                        maxWidth: '500px',
+                        maxHeight: '90vh',
+                        overflow: 'auto'
+                    }}>
+                        <h3 style={{ marginBottom: '24px' }}>Создание новой задачи</h3>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Название задачи *</label>
+                                <input
+                                    type="text"
+                                    className="input"
+                                    value={newTask.title}
+                                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
+                                    placeholder="Введите название задачи"
+                                />
+                            </div>
+
+                            <div>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Описание</label>
+                                <textarea
+                                    className="input"
+                                    rows={4}
+                                    value={newTask.description}
+                                    onChange={(e) => setNewTask({...newTask, description: e.target.value})}
+                                    placeholder="Опишите задачу подробнее"
+                                    style={{ width: '100%', resize: 'vertical' }}
+                                />
+                            </div>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Приоритет</label>
+                                    <select
+                                        className="input select"
+                                        value={newTask.priority}
+                                        onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
+                                    >
+                                        <option value="LOW">Низкий</option>
+                                        <option value="MEDIUM">Средний</option>
+                                        <option value="HIGH">Высокий</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Срок выполнения</label>
+                                    <input
+                                        type="date"
+                                        className="input"
+                                        value={newTask.dueDate}
+                                        onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
+                                        min={new Date().toISOString().split('T')[0]}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
+                            <button
+                                className="btn btn-secondary"
+                                onClick={() => setShowCreateModal(false)}
+                            >
+                                Отмена
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                onClick={createTask}
+                                disabled={!newTask.title.trim()}
+                            >
+                                Создать задачу
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
 
-export default TasksPage;
+export default UserTasks;
