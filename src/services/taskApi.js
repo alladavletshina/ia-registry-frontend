@@ -21,7 +21,11 @@ taskApi.interceptors.request.use(
 
 export const getAllTasks = async (params = {}) => {
     try {
-        const response = await taskApi.get('/', { params });
+        // Логируем параметры перед отправкой
+        console.log('Отправляемые параметры:', params);
+
+        const response = await taskApi.get('', {params});
+
         // Предполагаем, что бэкенд возвращает Page с полем content (массив задач)
         if (response.data && Array.isArray(response.data.content)) {
             return response.data.content;
@@ -29,10 +33,19 @@ export const getAllTasks = async (params = {}) => {
         if (Array.isArray(response.data)) {
             return response.data;
         }
+
+        // Логируем неожиданный формат ответа
         console.error('Неожиданный формат ответа API задач:', response.data);
         return [];
     } catch (error) {
-        console.error('Ошибка загрузки задач:', error);
+        // Подробная обработка ошибки
+        if (error.response) {
+            console.error('Ошибка сервера:', error.response.status, error.response.data);
+        } else if (error.request) {
+            console.error('Нет ответа от сервера:', error.request);
+        } else {
+            console.error('Ошибка конфигурации запроса:', error.message);
+        }
         throw error;
     }
 };
@@ -49,7 +62,7 @@ export const getTaskById = async (id) => {
 
 export const createTask = async (taskData) => {
     try {
-        const response = await taskApi.post('/', taskData);
+        const response = await taskApi.post('', taskData);
         return response.data;
     } catch (error) {
         console.error('Ошибка создания задачи:', error);
@@ -59,7 +72,7 @@ export const createTask = async (taskData) => {
 
 export const updateTask = async (id, taskData) => {
     try {
-        const response = await taskApi.put(`/${id}`, taskData);
+        const response = await taskApi.patch(`/${id}`, taskData);
         return response.data;
     } catch (error) {
         console.error(`Ошибка обновления задачи ${id}:`, error);
