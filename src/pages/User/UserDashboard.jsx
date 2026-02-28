@@ -1,7 +1,8 @@
-// src/pages/User/UserDashboard.jsx - ПОЛНАЯ ИСПРАВЛЕННАЯ ВЕРСИЯ
+// src/pages/User/UserDashboard.jsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { mockAssetsAPI } from '../../services/mockApi';
+import taskApi from '../../services/taskApi'; // импортируем taskApi
 import '../../styles/prototype.css';
 
 const UserDashboard = () => {
@@ -22,22 +23,33 @@ const UserDashboard = () => {
     const loadDashboardData = async () => {
         setIsLoading(true);
         try {
-            const response = await mockAssetsAPI.getMyAssets();
-            const assets = response.data;
+            const [assetsResponse, tasksStats] = await Promise.allSettled([
+                mockAssetsAPI.getMyAssets(),
+                taskApi.getStats() // получаем статистику задач
+            ]);
 
-            // Рассчитываем статистику
-            const today = new Date().toISOString().split('T')[0];
-            const needReviewCount = assets.filter(a => a.status === 'needs_review').length;
-            const updatedTodayCount = assets.filter(a => a.lastReview === today).length;
+            if (assetsResponse.status === 'fulfilled') {
+                const assets = assetsResponse.value.data;
+                const today = new Date().toISOString().split('T')[0];
+                const needReviewCount = assets.filter(a => a.status === 'needs_review').length;
+                const updatedTodayCount = assets.filter(a => a.lastReview === today).length;
+                setStats(prev => ({
+                    ...prev,
+                    myAssetsCount: assets.length,
+                    needReview: needReviewCount,
+                    updatedToday: updatedTodayCount
+                }));
+                setRecentAssets(assets.slice(0, 3));
+            }
 
-            setStats({
-                myAssetsCount: assets.length,
-                needReview: needReviewCount,
-                myTasks: 3, // Заглушка
-                updatedToday: updatedTodayCount
-            });
-
-            setRecentAssets(assets.slice(0, 3));
+            if (tasksStats.status === 'fulfilled') {
+                setStats(prev => ({
+                    ...prev,
+                    myTasks: tasksStats.value.total || 0
+                }));
+            } else {
+                console.warn('Не удалось загрузить статистику задач');
+            }
         } catch (error) {
             console.error('Ошибка загрузки данных:', error);
         } finally {

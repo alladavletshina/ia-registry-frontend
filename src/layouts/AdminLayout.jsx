@@ -1,6 +1,7 @@
-// src/layouts/AdminLayout.jsx - ДОПОЛНЕННЫЙ
-import React, { useState, useEffect } from 'react'; // <-- Добавляем useEffect
-import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom'; // <-- Добавляем useLocation
+// src/layouts/AdminLayout.jsx
+import React, { useState, useEffect } from 'react';
+import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
+import AdminTasks from '../pages/Admin/AdminTasks';
 import { useAuth } from '../contexts/AuthContext';
 import '../styles/prototype.css';
 
@@ -14,7 +15,7 @@ import AdminSettings from '../pages/Admin/AdminSettings';
 import AssetDetail from '../pages/Admin/AssetDetail';
 import AuditLogPage from "../pages/Admin/AuditLogPage";
 import NotificationCenter from '../components/admin/NotificationCenter';
-import AccessDenied from '../components/common/AccessDenied'; // <-- ДОБАВЛЯЕМ КОМПОНЕНТ "ДОСТУП ЗАПРЕЩЕН"
+import AccessDenied from '../components/common/AccessDenied';
 
 const AdminLayout = () => {
     const { user, logout, isAuthenticated, loading } = useAuth(); // <-- Добавляем isAuthenticated и loading
@@ -91,6 +92,7 @@ const AdminLayout = () => {
         { path: '/admin/users', icon: '👥', label: 'Пользователи', requiredRole: 'admin' },
         { path: '/admin/categories', icon: '🏷️', label: 'Категории', requiredRole: 'admin' },
         { path: '/admin/audit', icon: '📋', label: 'Журнал аудита', requiredRole: 'admin' },
+        { path: '/admin/tasks', icon: '✅', label: 'Задачи', requiredRole: 'admin' },
         { path: '/admin/reports', icon: '📈', label: 'Отчеты', requiredRole: 'admin' },
         { path: '/admin/settings', icon: '⚙️', label: 'Настройки', requiredRole: 'admin' },
     ];
@@ -275,6 +277,7 @@ const AdminLayout = () => {
                         <Route path="assets" element={<AssetRegistry />} />
                         <Route path="assets/:id" element={<AssetDetail />} />
                         <Route path="users" element={<UserManagement />} />
+                        <Route path="tasks" element={<AdminTasks />} />
                         <Route path="categories" element={<CategoryManagement />} />
                         <Route path="audit" element={<AuditLogPage />} />
                         <Route path="reports" element={<ReportsPage />} />
