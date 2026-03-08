@@ -85,6 +85,18 @@ const UserTasks = () => {
         }
     }, [search, internalUserId]);
 
+    const extendTaskDueDate = async (taskId, newDueDate) => {
+        try {
+            await taskApi.updateTaskFields(taskId, { dueDate: newDueDate });
+            await loadTasks();
+            await loadStats();
+            alert('Срок задачи продлён');
+        } catch (error) {
+            console.error('Ошибка продления срока:', error);
+            alert('Не удалось продлить срок');
+        }
+    };
+
     const loadStats = useCallback(async () => {
         try {
             const data = await taskApi.getStats();
@@ -128,7 +140,7 @@ const UserTasks = () => {
 
     const updateTaskStatus = async (taskId, newStatus) => {
         try {
-            await taskApi.patch(taskId, { status: newStatus });
+            await taskApi.updateTaskFields(taskId, { status: newStatus });
             await loadTasks();
             await loadStats();
         } catch (error) {
@@ -565,7 +577,7 @@ const UserTasks = () => {
                                                     onClick={() => {
                                                         const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate);
                                                         if (newDate) {
-                                                            alert('Функция продления срока пока не реализована');
+                                                            extendTaskDueDate(task.id, newDate);
                                                         }
                                                     }}
                                                 >

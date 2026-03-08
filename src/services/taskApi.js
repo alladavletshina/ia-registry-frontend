@@ -109,7 +109,22 @@ export const getTaskStats = async () => {
     }
 };
 
-export default {
+/**
+ * Обновить поля задачи (статус, срок и др.) через универсальный эндпоинт
+ * @param {number} id - ID задачи
+ * @param {object} fields - объект с полями для обновления (например, { dueDate: '2026-05-01' })
+ */
+export const updateTaskFields = async (id, fields) => {
+    try {
+        const response = await taskApi.patch(`/${id}/update`, fields);
+        return response.data;
+    } catch (error) {
+        console.error(`Ошибка обновления задачи ${id}:`, error);
+        throw error;
+    }
+};
+
+const taskApiObject = {
     getAll: getAllTasks,
     getById: getTaskById,
     create: createTask,
@@ -117,4 +132,7 @@ export default {
     patch: patchTask,
     delete: deleteTask,
     getStats: getTaskStats,
+    updateTaskFields,
 };
+
+export default taskApiObject;
