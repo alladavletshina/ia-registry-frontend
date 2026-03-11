@@ -1,99 +1,139 @@
-
-import React, { useState, useEffect } from 'react';
+// src/pages/Admin/AuditLogPage.jsx
+import React, { useState, useEffect, useCallback } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { IconButton, Chip, Tooltip } from '@mui/material';
 import { Download, FilterList, Search, Visibility } from '@mui/icons-material';
+import auditApi from '../../services/auditApi';
 import '../../styles/prototype.css';
 
 const AuditLogPage = () => {
     const [auditLogs, setAuditLogs] = useState([]);
-    const [filteredLogs, setFilteredLogs] = useState([]);
+    const [totalCount, setTotalCount] = useState(0);
     const [loading, setLoading] = useState(true);
+    const [stats, setStats] = useState({
+        total: 0,
+        info: 0,
+        warning: 0,
+        danger: 0,
+        success: 0,
+    });
     const [filters, setFilters] = useState({
         dateRange: 'all',
         actionType: 'all',
         userId: '',
-        searchTerm: ''
+        searchTerm: '',
+        page: 0,
+        pageSize: 10,
     });
 
-    // Моковые данные аудита
-    const mockAuditData = [
-        { id: 1, timestamp: '2024-01-22 14:30:25', user: 'admin', action: 'ASSET_CREATE', details: 'Создан актив "CRM система"', ip: '192.168.1.100', severity: 'info' },
-        { id: 2, timestamp: '2024-01-22 13:15:42', user: 'user1', action: 'ASSET_UPDATE', details: 'Изменен статус актива #2', ip: '192.168.1.101', severity: 'warning' },
-        { id: 3, timestamp: '2024-01-22 11:45:18', user: 'admin', action: 'USER_CREATE', details: 'Добавлен новый пользователь', ip: '192.168.1.100', severity: 'info' },
-        { id: 4, timestamp: '2024-01-22 10:20:33', user: 'user1', action: 'LOGIN', details: 'Успешный вход в систему', ip: '192.168.1.101', severity: 'info' },
-        { id: 5, timestamp: '2024-01-22 09:55:47', user: 'admin', action: 'REPORT_GENERATE', details: 'Сформирован отчет по активам', ip: '192.168.1.100', severity: 'info' },
-        { id: 6, timestamp: '2024-01-21 16:40:12', user: 'admin', action: 'ASSET_DELETE', details: 'Удален актив #5', ip: '192.168.1.100', severity: 'danger' },
-        { id: 7, timestamp: '2024-01-21 15:25:38', user: 'petrova', action: 'PERMISSION_CHANGE', details: 'Изменены права доступа', ip: '192.168.1.102', severity: 'warning' },
-        { id: 8, timestamp: '2024-01-21 14:10:55', user: 'user1', action: 'DATA_EXPORT', details: 'Экспорт данных в CSV', ip: '192.168.1.101', severity: 'info' },
-        { id: 9, timestamp: '2024-01-21 12:35:21', user: 'admin', action: 'SETTINGS_UPDATE', details: 'Обновлены настройки системы', ip: '192.168.1.100', severity: 'info' },
-        { id: 10, timestamp: '2024-01-21 11:20:44', user: 'user1', action: 'PASSWORD_CHANGE', details: 'Смена пароля', ip: '192.168.1.101', severity: 'info' },
-    ];
+    // Функция преобразования dateRange в startDate/endDate
+    const getDateParams = useCallback((range) => {
+        const now = new Date();
+        let startDate, endDate;
+
+        switch (range) {
+            case 'today':
+                startDate = new Date(now.setHours(0, 0, 0, 0)).toISOString().split('T')[0];
+                endDate = new Date().toISOString().split('T')[0];
+                break;
+            case 'week':
+                const weekAgo = new Date(now);
+                weekAgo.setDate(weekAgo.getDate() - 7);
+                startDate = weekAgo.toISOString().split('T')[0];
+                endDate = new Date().toISOString().split('T')[0];
+                break;
+            case 'month':
+                const monthAgo = new Date(now);
+                monthAgo.setMonth(monthAgo.getMonth() - 1);
+                startDate = monthAgo.toISOString().split('T')[0];
+                endDate = new Date().toISOString().split('T')[0];
+                break;
+            default:
+                return {};
+        }
+        return { startDate, endDate };
+    }, []);
+
+    // Загрузка данных аудита
+    const loadAuditLogs = useCallback(async () => {
+        setLoading(true);
+        try {
+            const params = {
+                page: filters.page,
+                size: filters.pageSize,
+                search: filters.searchTerm || undefined,
+                action: filters.actionType !== 'all' ? filters.actionType : undefined,
+                ...getDateParams(filters.dateRange),
+            };
+            const response = await auditApi.getLogs(params);
+            setAuditLogs(response.content || []);
+            setTotalCount(response.totalElements || 0);
+        } catch (error) {
+            console.error('Ошибка загрузки аудита:', error);
+        } finally {
+            setLoading(false);
+        }
+    }, [filters, getDateParams]);
+
+    // Загрузка статистики
+    const loadStats = useCallback(async () => {
+        try {
+            const params = getDateParams(filters.dateRange);
+            const statsData = await auditApi.getStats(params);
+            setStats(statsData);
+        } catch (error) {
+            console.error('Ошибка загрузки статистики:', error);
+        }
+    }, [filters.dateRange, getDateParams]);
 
     useEffect(() => {
         loadAuditLogs();
-    }, []);
+        loadStats();
+    }, [loadAuditLogs, loadStats]);
 
-    useEffect(() => {
-        applyFilters();
-    }, [filters, auditLogs]);
-
-    const loadAuditLogs = async () => {
-        setLoading(true);
-        // Имитация загрузки с API
-        setTimeout(() => {
-            setAuditLogs(mockAuditData);
-            setFilteredLogs(mockAuditData);
-            setLoading(false);
-        }, 500);
+    // Экспорт в CSV
+    const exportToCSV = async () => {
+        try {
+            const params = {
+                search: filters.searchTerm || undefined,
+                action: filters.actionType !== 'all' ? filters.actionType : undefined,
+                ...getDateParams(filters.dateRange),
+            };
+            const blob = await auditApi.export(params);
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Ошибка экспорта:', error);
+            alert('Не удалось экспортировать данные');
+        }
     };
 
-    const applyFilters = () => {
-        let filtered = [...auditLogs];
-
-        // Фильтр по поиску
-        if (filters.searchTerm) {
-            const term = filters.searchTerm.toLowerCase();
-            filtered = filtered.filter(log =>
-                log.user.toLowerCase().includes(term) ||
-                log.details.toLowerCase().includes(term) ||
-                log.action.toLowerCase().includes(term)
-            );
-        }
-
-        // Фильтр по типу действия
-        if (filters.actionType !== 'all') {
-            filtered = filtered.filter(log => log.action === filters.actionType);
-        }
-
-        // Фильтр по дате
-        if (filters.dateRange !== 'all') {
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-            filtered = filtered.filter(log => {
-                const logDate = new Date(log.timestamp);
-
-                switch(filters.dateRange) {
-                    case 'today':
-                        return logDate >= today;
-                    case 'week':
-                        const weekAgo = new Date(today);
-                        weekAgo.setDate(weekAgo.getDate() - 7);
-                        return logDate >= weekAgo;
-                    case 'month':
-                        const monthAgo = new Date(today);
-                        monthAgo.setMonth(monthAgo.getMonth() - 1);
-                        return logDate >= monthAgo;
-                    default:
-                        return true;
-                }
-            });
-        }
-
-        setFilteredLogs(filtered);
+    // Обработчики пагинации
+    const handlePageChange = (newPage) => {
+        setFilters(prev => ({ ...prev, page: newPage }));
     };
 
+    const handlePageSizeChange = (newPageSize) => {
+        setFilters(prev => ({ ...prev, pageSize: newPageSize, page: 0 }));
+    };
+
+    // Сброс фильтров
+    const clearFilters = () => {
+        setFilters({
+            dateRange: 'all',
+            actionType: 'all',
+            userId: '',
+            searchTerm: '',
+            page: 0,
+            pageSize: 10,
+        });
+    };
+
+    // Цвета для severity
     const getSeverityColor = (severity) => {
         const colors = {
             info: 'primary',
@@ -104,6 +144,7 @@ const AuditLogPage = () => {
         return colors[severity] || 'default';
     };
 
+    // Человеко-читаемые названия действий
     const getActionLabel = (action) => {
         const labels = {
             'ASSET_CREATE': 'Создание актива',
@@ -122,29 +163,19 @@ const AuditLogPage = () => {
         return labels[action] || action;
     };
 
-    const exportToCSV = () => {
-        const headers = ['Время', 'Пользователь', 'Действие', 'Детали', 'IP адрес', 'Уровень'];
-        const csvData = [
-            headers.join(','),
-            ...filteredLogs.map(log => [
-                log.timestamp,
-                log.user,
-                getActionLabel(log.action),
-                `"${log.details}"`,
-                log.ip,
-                log.severity
-            ].join(','))
-        ].join('\n');
-
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `audit_log_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
+    // Просмотр деталей записи
+    const viewDetails = (log) => {
+        alert(`Детали события:\n\n` +
+            `ID: ${log.id}\n` +
+            `Время: ${log.timestamp}\n` +
+            `Пользователь: ${log.user}\n` +
+            `Действие: ${getActionLabel(log.action)}\n` +
+            `Детали: ${log.details}\n` +
+            `IP: ${log.ip}\n` +
+            `Уровень важности: ${log.severity}`);
     };
 
+    // Колонки для DataGrid
     const columns = [
         {
             field: 'timestamp',
@@ -213,26 +244,6 @@ const AuditLogPage = () => {
         }
     ];
 
-    const viewDetails = (log) => {
-        alert(`Детали события:\n\n` +
-            `ID: ${log.id}\n` +
-            `Время: ${log.timestamp}\n` +
-            `Пользователь: ${log.user}\n` +
-            `Действие: ${getActionLabel(log.action)}\n` +
-            `Детали: ${log.details}\n` +
-            `IP: ${log.ip}\n` +
-            `Уровень важности: ${log.severity}`);
-    };
-
-    const clearFilters = () => {
-        setFilters({
-            dateRange: 'all',
-            actionType: 'all',
-            userId: '',
-            searchTerm: ''
-        });
-    };
-
     return (
         <div className="audit-log-page">
             <div className="content-header">
@@ -261,7 +272,7 @@ const AuditLogPage = () => {
                                 <select
                                     className="input select"
                                     value={filters.dateRange}
-                                    onChange={(e) => setFilters({...filters, dateRange: e.target.value})}
+                                    onChange={(e) => setFilters({...filters, dateRange: e.target.value, page: 0})}
                                 >
                                     <option value="all">Все время</option>
                                     <option value="today">Сегодня</option>
@@ -275,7 +286,7 @@ const AuditLogPage = () => {
                                 <select
                                     className="input select"
                                     value={filters.actionType}
-                                    onChange={(e) => setFilters({...filters, actionType: e.target.value})}
+                                    onChange={(e) => setFilters({...filters, actionType: e.target.value, page: 0})}
                                 >
                                     <option value="all">Все действия</option>
                                     <option value="ASSET_CREATE">Создание активов</option>
@@ -295,7 +306,7 @@ const AuditLogPage = () => {
                                         className="input"
                                         placeholder="Поиск по логам..."
                                         value={filters.searchTerm}
-                                        onChange={(e) => setFilters({...filters, searchTerm: e.target.value})}
+                                        onChange={(e) => setFilters({...filters, searchTerm: e.target.value, page: 0})}
                                     />
                                     <Search style={{
                                         position: 'absolute',
@@ -331,7 +342,7 @@ const AuditLogPage = () => {
                                 border: '1px solid var(--primary-100)'
                             }}>
                                 <span style={{ fontSize: '12px', color: 'var(--primary-700)' }}>Всего записей:</span>
-                                <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{filteredLogs.length}</strong>
+                                <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{stats.total}</strong>
                             </div>
                             <div className="stat-badge" style={{
                                 padding: '8px 16px',
@@ -340,9 +351,7 @@ const AuditLogPage = () => {
                                 border: '1px solid var(--warning-100)'
                             }}>
                                 <span style={{ fontSize: '12px', color: 'var(--warning-700)' }}>Предупреждений:</span>
-                                <strong style={{ marginLeft: '8px', fontSize: '16px' }}>
-                                    {filteredLogs.filter(l => l.severity === 'warning').length}
-                                </strong>
+                                <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{stats.warning}</strong>
                             </div>
                             <div className="stat-badge" style={{
                                 padding: '8px 16px',
@@ -351,19 +360,23 @@ const AuditLogPage = () => {
                                 border: '1px solid var(--danger-100)'
                             }}>
                                 <span style={{ fontSize: '12px', color: 'var(--danger-700)' }}>Опасных действий:</span>
-                                <strong style={{ marginLeft: '8px', fontSize: '16px' }}>
-                                    {filteredLogs.filter(l => l.severity === 'danger').length}
-                                </strong>
+                                <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{stats.danger}</strong>
                             </div>
                         </div>
 
                         <div style={{ height: 500, width: '100%' }}>
                             <DataGrid
-                                rows={filteredLogs}
+                                rows={auditLogs}
                                 columns={columns}
                                 loading={loading}
-                                pageSize={10}
+                                paginationMode="server"
+                                rowCount={totalCount}
+                                page={filters.page}
+                                pageSize={filters.pageSize}
+                                onPageChange={handlePageChange}
+                                onPageSizeChange={handlePageSizeChange}
                                 rowsPerPageOptions={[10, 25, 50]}
+                                checkboxSelection
                                 disableSelectionOnClick
                             />
                         </div>
