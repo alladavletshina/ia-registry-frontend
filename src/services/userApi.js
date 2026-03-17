@@ -87,6 +87,18 @@ export const deleteUser = async (id) => {
     }
 };
 
+export const exportUsersToCsv = async () => {
+    try {
+        const response = await userApi.get('/report/csv', {
+            responseType: 'blob', // важно для скачивания файла
+        });
+        return response.data; // возвращаем Blob
+    } catch (error) {
+        console.error('Ошибка экспорта пользователей в CSV:', error);
+        throw error;
+    }
+};
+
 export default {
     getAll: getAllUsers,
     getById: getUserById,
@@ -94,4 +106,5 @@ export default {
     update: updateUser,
     delete: deleteUser,
     getCurrentUser,
+    exportToCsv: exportUsersToCsv,
 };

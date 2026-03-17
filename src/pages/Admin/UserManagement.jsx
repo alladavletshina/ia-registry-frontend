@@ -170,28 +170,24 @@ const UserManagement = () => {
         }
     };
 
-    const exportToCSV = () => {
-        const headers = ['ID', 'Логин', 'ФИО', 'Email', 'Роль', 'Подразделение', 'Статус'];
-        const csvData = [
-            headers.join(','),
-            ...filteredUsers.map(user => [
-                user.id,
-                user.username,
-                `"${user.fullName}"`,
-                user.email,
-                user.role,
-                user.department,
-                user.isActive ? 'Активен' : 'Неактивен'
-            ].join(','))
-        ].join('\n');
+    const exportToCSV = async () => {
+        try {
+            // Вызываем API для получения CSV-файла
+            const blob = await userApi.exportToCsv(); // если вы экспортировали как метод объекта
 
-        const blob = new Blob([csvData], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `users_${new Date().toISOString().split('T')[0]}.csv`;
-        a.click();
-        window.URL.revokeObjectURL(url);
+            // Создаём ссылку для скачивания
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.setAttribute('download', `users_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Ошибка при скачивании CSV:', error);
+            alert('Не удалось выгрузить отчёт. Попробуйте позже.');
+        }
     };
 
     const columns = [
