@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { refreshAccessToken } from './refreshToken'; // импортируем функцию
 
 const USERS_API_URL = process.env.REACT_APP_USERS_API_URL;
 
@@ -17,6 +18,35 @@ userApi.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Перехватчик ответов для обработки 401
+userApi.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        // Если ошибка 401 и это не повторный запрос на обновление
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                // Пытаемся обновить токен
+                const newToken = await refreshAccessToken();
+
+                // Обновляем заголовок исходного запроса
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+
+                // Повторяем исходный запрос
+                return userApi(originalRequest);
+            } catch (refreshError) {
+                // Если обновление не удалось, пробрасываем ошибку дальше
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 export const getCurrentUser = async () => {

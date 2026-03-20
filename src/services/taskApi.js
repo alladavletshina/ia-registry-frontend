@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { refreshAccessToken } from './refreshToken';
 
 const TASKS_API_URL = process.env.REACT_APP_TASKS_API_URL;
 
@@ -7,7 +8,7 @@ const taskApi = axios.create({
     timeout: 10000,
 });
 
-// Добавляем токен к каждому запросу
+// Перехватчик запросов (добавление токена)
 taskApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -17,6 +18,28 @@ taskApi.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Перехватчик ответов (обработка 401)
+taskApi.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const newToken = await refreshAccessToken();
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return taskApi(originalRequest);
+            } catch (refreshError) {
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 export const getAllTasks = async (params = {}) => {

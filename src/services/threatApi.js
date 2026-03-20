@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { refreshAccessToken } from './refreshToken';
 
 const THREATS_API_URL = process.env.REACT_APP_THREATS_API_URL;
 
@@ -7,7 +8,7 @@ const threatApi = axios.create({
     timeout: 80000,
 });
 
-// Добавляем токен к каждому запросу
+// Перехватчик запросов (добавление токена)
 threatApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -17,6 +18,28 @@ threatApi.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Перехватчик ответов (обработка 401)
+threatApi.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const newToken = await refreshAccessToken();
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return threatApi(originalRequest);
+            } catch (refreshError) {
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 /**

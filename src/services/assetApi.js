@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { refreshAccessToken } from './refreshToken';
 
 const ASSETS_API_URL = process.env.REACT_APP_ASSETS_API_URL || 'http://localhost:8082/api/assets';
 
@@ -7,7 +8,7 @@ const assetApi = axios.create({
     timeout: 10000,
 });
 
-// Добавляем токен к каждому запросу
+// Перехватчик запросов (добавление токена)
 assetApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -17,6 +18,28 @@ assetApi.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Перехватчик ответов (обработка 401)
+assetApi.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const newToken = await refreshAccessToken();
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return assetApi(originalRequest);
+            } catch (refreshError) {
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 export const getAllAssets = async () => {

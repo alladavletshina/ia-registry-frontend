@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { refreshAccessToken } from './refreshToken';
 
 const AUDIT_API_URL = process.env.REACT_APP_AUDIT_API_URL || 'http://localhost:8082/api/audit';
 
@@ -7,7 +8,7 @@ const auditApi = axios.create({
     timeout: 10000,
 });
 
-// Добавляем токен к каждому запросу
+// Перехватчик запросов (добавление токена)
 auditApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -17,6 +18,28 @@ auditApi.interceptors.request.use(
         return config;
     },
     (error) => Promise.reject(error)
+);
+
+// Перехватчик ответов (обработка 401)
+auditApi.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const newToken = await refreshAccessToken();
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return auditApi(originalRequest);
+            } catch (refreshError) {
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
+    }
 );
 
 // Получение списка записей аудита с фильтрацией и пагинацией

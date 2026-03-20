@@ -1,5 +1,6 @@
 // src/services/api.js - РЕАЛЬНАЯ АВТОРИЗАЦИЯ
 import axios from 'axios';
+import { refreshAccessToken } from './refreshToken';
 
 // URL для авторизации
 const AUTH_URL = 'http://localhost:8083/api/auth';
@@ -11,6 +12,40 @@ const authApi = axios.create({
     baseURL: AUTH_URL,
     timeout: 10000
 });
+
+// Перехватчик запросов (добавление токена)
+authApi.interceptors.request.use(
+    (config) => {
+        const token = localStorage.getItem('token');
+        if (token) {
+            config.headers.Authorization = `Bearer ${token}`;
+        }
+        return config;
+    },
+    (error) => Promise.reject(error)
+);
+
+// Перехватчик ответов (обработка 401)
+authApi.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+        const originalRequest = error.config;
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+            originalRequest._retry = true;
+
+            try {
+                const newToken = await refreshAccessToken();
+                originalRequest.headers.Authorization = `Bearer ${newToken}`;
+                return authApi(originalRequest);
+            } catch (refreshError) {
+                return Promise.reject(refreshError);
+            }
+        }
+
+        return Promise.reject(error);
+    }
+);
 
 // РЕАЛЬНЫЙ login запрос - ТОЧНО КАК В CURL
 export const login = async (credentials) => {

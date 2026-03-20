@@ -5,12 +5,10 @@ import { jwtDecode } from 'jwt-decode';
 const AuthContext = createContext();
 
 // Конфигурация Keycloak
-const KEYCLOAK_URL = 'http://localhost:8080';
-const REALM = 'asset-management';
-const CLIENT_ID = 'frontend-app';
-
-// URL для регистрации (user-service)
-const API_URL = 'http://localhost:8082/api';
+const KEYCLOAK_URL = process.env.REACT_APP_KEYCLOAK_URL;
+const REALM = process.env.REACT_APP_KEYCLOAK_REALM;
+const CLIENT_ID = process.env.REACT_APP_KEYCLOAK_CLIENT_ID;
+const API_URL = process.env.REACT_APP_API_URL;
 
 export const useAuth = () => {
     const context = useContext(AuthContext);
