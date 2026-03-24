@@ -14,7 +14,8 @@ import {
     Typography,
     Box,
     Alert,
-    Snackbar
+    Snackbar,
+    TablePagination
 } from '@mui/material';
 import {
     Sync,
@@ -22,8 +23,7 @@ import {
     Visibility,
     Refresh,
     CheckCircle,
-    Cancel,
-    Warning
+    Cancel
 } from '@mui/icons-material';
 import threatApi from '../../services/threatApi';
 import '../../styles/prototype.css';
@@ -65,13 +65,11 @@ const ThreatManagement = () => {
 
     const handleSearch = () => {
         setSearch(searchInput);
-        setPage(0); // сброс на первую страницу
+        setPage(0);
     };
 
     const handleKeyPress = (e) => {
-        if (e.key === 'Enter') {
-            handleSearch();
-        }
+        if (e.key === 'Enter') handleSearch();
     };
 
     const handleSync = async () => {
@@ -82,7 +80,6 @@ const ThreatManagement = () => {
         try {
             const message = await threatApi.sync();
             showSnackbar(message || 'Синхронизация успешно запущена', 'success');
-            // После синхронизации обновим список (можно с небольшой задержкой, чтобы бэкенд успел обработать)
             setTimeout(() => loadThreats(), 2000);
         } catch (error) {
             showSnackbar('Ошибка синхронизации: ' + (error.response?.data?.message || error.message), 'error');
@@ -158,11 +155,7 @@ const ThreatManagement = () => {
             width: 80,
             sortable: false,
             renderCell: (params) => (
-                <IconButton
-                    size="small"
-                    color="primary"
-                    onClick={() => handleViewDetails(params.row)}
-                >
+                <IconButton size="small" color="primary" onClick={() => handleViewDetails(params.row)}>
                     <Visibility fontSize="small" />
                 </IconButton>
             )
@@ -174,12 +167,7 @@ const ThreatManagement = () => {
             <div className="content-header">
                 <h1>Угрозы из БДУ ФСТЭК</h1>
                 <div className="header-actions">
-                    <Button
-                        variant="contained"
-                        startIcon={<Sync />}
-                        onClick={handleSync}
-                        disabled={syncLoading}
-                    >
+                    <Button variant="contained" startIcon={<Sync />} onClick={handleSync} disabled={syncLoading}>
                         {syncLoading ? 'Синхронизация...' : 'Синхронизировать'}
                     </Button>
                 </div>
@@ -204,11 +192,7 @@ const ThreatManagement = () => {
                                 }}
                                 style={{ flex: 1, maxWidth: 400 }}
                             />
-                            <Button
-                                variant="contained"
-                                onClick={handleSearch}
-                                disabled={loading}
-                            >
+                            <Button variant="contained" onClick={handleSearch} disabled={loading}>
                                 Найти
                             </Button>
                             <Button
@@ -225,19 +209,12 @@ const ThreatManagement = () => {
                         </div>
                     </div>
 
-                    <div className="card-body" style={{ height: 600, width: '100%' }}>
+                    <div className="card-body" style={{ height: 500, width: '100%', marginBottom: '16px' }}>
                         <DataGrid
                             rows={threats}
                             columns={columns}
                             loading={loading}
-                            pagination
-                            paginationMode="server"
-                            rowCount={totalElements}
-                            page={page}
-                            pageSize={pageSize}
-                            onPageChange={(newPage) => setPage(newPage)}
-                            onPageSizeChange={(newSize) => setPageSize(newSize)}
-                            rowsPerPageOptions={[10, 25, 50, 100, 300]}
+                            hideFooterPagination   // отключаем встроенную пагинацию
                             disableSelectionOnClick
                             getRowId={(row) => row.id}
                             components={{
@@ -249,6 +226,26 @@ const ThreatManagement = () => {
                             }}
                         />
                     </div>
+
+                    {/* Ручная пагинация */}
+                    <TablePagination
+                        component="div"
+                        count={totalElements}
+                        page={page}
+                        onPageChange={(event, newPage) => {
+                            console.log('Changing page to:', newPage);
+                            setPage(newPage);
+                        }}
+                        rowsPerPage={pageSize}
+                        onRowsPerPageChange={(event) => {
+                            const newSize = parseInt(event.target.value, 10);
+                            setPageSize(newSize);
+                            setPage(0);
+                        }}
+                        rowsPerPageOptions={[10, 25, 50, 100, 300]}
+                        labelRowsPerPage="Строк на странице:"
+                        labelDisplayedRows={({ from, to, count }) => `${from}-${to} из ${count}`}
+                    />
 
                     <div className="card-footer">
                         <Typography variant="body2" color="textSecondary">
@@ -286,7 +283,6 @@ const ThreatManagement = () => {
                 </DialogActions>
             </Dialog>
 
-            {/* Уведомления */}
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={6000}
