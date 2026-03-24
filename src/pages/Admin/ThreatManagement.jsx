@@ -33,7 +33,7 @@ const ThreatManagement = () => {
     const [loading, setLoading] = useState(false);
     const [totalElements, setTotalElements] = useState(0);
     const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(100);
+    const [pageSize, setPageSize] = useState(10);
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [selectedThreat, setSelectedThreat] = useState(null);
@@ -237,7 +237,7 @@ const ThreatManagement = () => {
                             pageSize={pageSize}
                             onPageChange={(newPage) => setPage(newPage)}
                             onPageSizeChange={(newSize) => setPageSize(newSize)}
-                            rowsPerPageOptions={[10, 25, 50]}
+                            rowsPerPageOptions={[10, 25, 50, 100, 300]}
                             disableSelectionOnClick
                             getRowId={(row) => row.id}
                             components={{
