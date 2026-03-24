@@ -33,7 +33,7 @@ const ThreatManagement = () => {
     const [loading, setLoading] = useState(false);
     const [totalElements, setTotalElements] = useState(0);
     const [page, setPage] = useState(0);
-    const [pageSize, setPageSize] = useState(10);
+    const [pageSize, setPageSize] = useState(100);
     const [search, setSearch] = useState('');
     const [searchInput, setSearchInput] = useState('');
     const [selectedThreat, setSelectedThreat] = useState(null);
