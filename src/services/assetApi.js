@@ -128,6 +128,16 @@ export const getMyAssets = async () => {
     }
 };
 
+export const getAssetGroups = async () => {
+    try {
+        const response = await assetApi.get('/groups');
+        return response.data; // массив { id, name, code, description }
+    } catch (error) {
+        console.error('Ошибка загрузки групп активов:', error);
+        return [];
+    }
+};
+
 export default {
     getAll: getAllAssets,
     getById: getAssetById,
@@ -135,4 +145,5 @@ export default {
     update: updateAsset,
     delete: deleteAsset,
     getMyAssets,
+    getAssetGroups,
 };

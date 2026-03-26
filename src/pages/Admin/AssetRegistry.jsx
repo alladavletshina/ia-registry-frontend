@@ -1,4 +1,4 @@
-// src/pages/Admin/AssetRegistry.jsx
+
 import React, { useState, useEffect } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import assetApi from '../../services/assetApi';
@@ -45,32 +45,85 @@ const AssetRegistry = () => {
         }
     };
 
+    // Преобразование статуса для отображения
+    const mapStatusToClient = (status) => {
+        switch (status) {
+            case 'ACTIVE': return 'active';
+            case 'NEEDS_REVIEW': return 'needs_review';
+            case 'ARCHIVED': return 'archived';
+            case 'DRAFT': return 'draft';
+            default: return 'active';
+        }
+    };
+
+    const mapCiaToClient = (cia) => {
+        if (!cia) return 'medium';
+        return cia.toLowerCase();
+    };
+
+    const mapAssetToForm = (asset) => ({
+        name: asset.name,
+        category: asset.category,
+        owner: asset.ownerId,
+        status: mapStatusToClient(asset.status),
+        confidentiality: mapCiaToClient(asset.confidentiality),
+        integrity: mapCiaToClient(asset.integrity),
+        availability: mapCiaToClient(asset.availability),
+        lastReview: asset.lastReview,
+        description: asset.description,
+        location: asset.location,
+        tags: asset.tags,
+        value: asset.value,
+        weightC: asset.weightC,
+        weightI: asset.weightI,
+        weightA: asset.weightA,
+        legalStatus: asset.legalStatus,
+        groupId: asset.groupId
+    });
+
     const columns = [
         { field: 'id', headerName: 'ID', width: 70 },
         {
             field: 'name',
             headerName: 'Наименование',
             width: 200,
-            renderCell: (params) => (
-                <strong>{params.value}</strong>
-            )
+            renderCell: (params) => <strong>{params.value}</strong>
         },
         { field: 'category', headerName: 'Категория', width: 130 },
-        { field: 'owner', headerName: 'Владелец', width: 150 },
+        { field: 'ownerId', headerName: 'Владелец (ID)', width: 150 },
         {
             field: 'status',
             headerName: 'Статус',
             width: 120,
-            renderCell: (params) => (
-                <StatusBadge status={params.value} size="small" />
-            )
+            renderCell: (params) => <StatusBadge status={mapStatusToClient(params.value)} size="small" />
+        },
+        {
+            field: 'value',
+            headerName: 'Стоимость (руб.)',
+            width: 120,
+            renderCell: (params) => params.value ? params.value.toLocaleString() : '-'
+        },
+        {
+            field: 'legalStatus',
+            headerName: 'Правовой статус',
+            width: 150,
+            renderCell: (params) => {
+                const map = { pers_data: 'Персональные данные', commercial_secret: 'Коммерческая тайна', other: 'Иное' };
+                return map[params.value] || params.value || '-';
+            }
+        },
+        {
+            field: 'groupName',
+            headerName: 'Группа',
+            width: 150,
+            renderCell: (params) => params.value || '-'
         },
         {
             field: 'confidentiality',
             headerName: 'Конф-ть',
             width: 100,
             renderCell: (params) => (
-                <span className={`badge level-${params.value}`}>
+                <span className={`badge level-${params.value.toLowerCase()}`}>
                     {params.value}
                 </span>
             )
@@ -168,7 +221,7 @@ const AssetRegistry = () => {
 
             {showCreateModal && (
                 <AssetCreateModal
-                    initialData={selectedAsset}
+                    initialData={selectedAsset ? mapAssetToForm(selectedAsset) : null}
                     onClose={() => {
                         setShowCreateModal(false);
                         setSelectedAsset(null);
