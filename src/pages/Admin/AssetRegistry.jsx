@@ -78,7 +78,7 @@ const AssetRegistry = () => {
         weightI: asset.weightI,
         weightA: asset.weightA,
         legalStatus: asset.legalStatus,
-        groupId: asset.groupId
+        groupId: asset.group ? asset.group.id : null   // <-- важно
     });
 
     const columns = [

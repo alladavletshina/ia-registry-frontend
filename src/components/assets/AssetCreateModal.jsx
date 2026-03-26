@@ -1,21 +1,26 @@
+// src/components/assets/AssetCreateModal.jsx
+
 import React, { useState, useEffect } from 'react';
 import CIAInput from './CIAInput';
 import { getAssetGroups } from '../../services/assetApi';
+import userApi from '../../services/userApi';
 import '../../styles/prototype.css';
 
 const AssetCreateModal = ({ onClose, onSave, initialData }) => {
     const [groups, setGroups] = useState([]);
+    const [users, setUsers] = useState([]);
+    const [loadingUsers, setLoadingUsers] = useState(false);
     const [formData, setFormData] = useState(initialData || {
         name: '',
         description: '',
         category: '',
-        owner: '',
+        owner: '',          // keycloakId
         location: '',
         status: 'active',
         confidentiality: 'medium',
         integrity: 'medium',
         availability: 'medium',
-        tags: [],
+        tags: '',
         value: 0,
         weightC: 1,
         weightI: 1,
@@ -24,46 +29,28 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
         groupId: ''
     });
 
+    // Загрузка справочников
     useEffect(() => {
         const loadGroups = async () => {
             const groupsData = await getAssetGroups();
             setGroups(groupsData);
         };
+        const loadUsers = async () => {
+            setLoadingUsers(true);
+            try {
+                const usersData = await userApi.getAll();
+                setUsers(usersData);
+            } catch (error) {
+                console.error('Ошибка загрузки пользователей:', error);
+            } finally {
+                setLoadingUsers(false);
+            }
+        };
         loadGroups();
+        loadUsers();
     }, []);
 
-    const handleSubmit = () => {
-        if (!formData.name.trim()) {
-            alert('Пожалуйста, укажите наименование актива');
-            return;
-        }
-
-        const requestData = {
-            name: formData.name,
-            category: formData.category || null,
-            status: statusMap[formData.status] || 'ACTIVE',
-            confidentiality: ciaMap[formData.confidentiality] || 'MEDIUM',
-            integrity: ciaMap[formData.integrity] || 'MEDIUM',
-            availability: ciaMap[formData.availability] || 'MEDIUM',
-            lastReview: new Date().toISOString().split('T')[0],
-            description: formData.description || '',
-            location: formData.location || '',
-            tags: formData.tags,
-            value: formData.value,
-            weightC: formData.weightC,
-            weightI: formData.weightI,
-            weightA: formData.weightA,
-            legalStatus: formData.legalStatus,
-            groupId: formData.groupId || null
-        };
-
-        onSave(requestData);
-    };
-
-    const handleChange = (field, value) => {
-        setFormData(prev => ({ ...prev, [field]: value }));
-    };
-
+    // Маппинг статусов и CIA для отправки на сервер
     const statusMap = {
         active: 'ACTIVE',
         needs_review: 'NEEDS_REVIEW',
@@ -76,6 +63,57 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
         medium: 'MEDIUM',
         high: 'HIGH',
         critical: 'CRITICAL'
+    };
+
+    const handleChange = (field, value) => {
+        setFormData(prev => ({ ...prev, [field]: value }));
+    };
+
+    const handleSubmit = () => {
+        // Валидация обязательных полей
+        if (!formData.name.trim()) {
+            alert('Наименование актива обязательно');
+            return;
+        }
+        if (!formData.status || !statusMap[formData.status]) {
+            alert('Статус актива обязателен');
+            return;
+        }
+        if (!formData.confidentiality || !ciaMap[formData.confidentiality]) {
+            alert('Уровень конфиденциальности обязателен');
+            return;
+        }
+        if (!formData.integrity || !ciaMap[formData.integrity]) {
+            alert('Уровень целостности обязателен');
+            return;
+        }
+        if (!formData.availability || !ciaMap[formData.availability]) {
+            alert('Уровень доступности обязателен');
+            return;
+        }
+
+        const requestData = {
+            name: formData.name.trim(),
+            category: formData.category || null,
+            ownerId: formData.owner || null,               // keycloakId или null
+            status: statusMap[formData.status],
+            confidentiality: ciaMap[formData.confidentiality],
+            integrity: ciaMap[formData.integrity],
+            availability: ciaMap[formData.availability],
+            lastReview: new Date().toISOString().split('T')[0],
+            description: formData.description || null,
+            location: formData.location || null,
+            tags: formData.tags || null,
+            value: Number(formData.value) || 0,
+            weightC: Number(formData.weightC) || 1,
+            weightI: Number(formData.weightI) || 1,
+            weightA: Number(formData.weightA) || 1,
+            legalStatus: formData.legalStatus || null,
+            groupId: formData.groupId || null
+        };
+
+        console.log('📤 Sending asset data:', requestData); // для отладки
+        onSave(requestData);
     };
 
     return (
@@ -110,8 +148,11 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                     gap: '20px',
                     marginBottom: '24px'
                 }}>
-                    <div className="form-group">
-                        <label>Наименование *</label>
+                    {/* Наименование (обязательное) */}
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                        <label style={{ fontWeight: 'bold' }}>
+                            Наименование <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <input
                             className="input"
                             value={formData.name}
@@ -120,6 +161,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                         />
                     </div>
 
+                    {/* Категория (опционально) */}
                     <div className="form-group">
                         <label>Категория</label>
                         <select
@@ -135,18 +177,11 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                         </select>
                     </div>
 
+                    {/* Статус (обязательный) */}
                     <div className="form-group">
-                        <label>Владелец (ID)</label>
-                        <input
-                            className="input"
-                            value={formData.owner}
-                            onChange={(e) => handleChange('owner', e.target.value)}
-                            placeholder="ID пользователя-владельца"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Статус</label>
+                        <label style={{ fontWeight: 'bold' }}>
+                            Статус <span style={{ color: 'red' }}>*</span>
+                        </label>
                         <select
                             className="input select"
                             value={formData.status}
@@ -159,44 +194,27 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                         </select>
                     </div>
 
+                    {/* Владелец (опционально) */}
                     <div className="form-group">
-                        <label>Местоположение</label>
-                        <input
-                            className="input"
-                            value={formData.location}
-                            onChange={(e) => handleChange('location', e.target.value)}
-                            placeholder="Физическое или логическое расположение"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Стоимость (руб.)</label>
-                        <input
-                            type="number"
-                            className="input"
-                            value={formData.value}
-                            onChange={(e) => handleChange('value', parseFloat(e.target.value) || 0)}
-                            placeholder="0"
-                            step="0.01"
-                        />
-                    </div>
-
-                    <div className="form-group">
-                        <label>Правовой статус</label>
+                        <label>Владелец</label>
                         <select
                             className="input select"
-                            value={formData.legalStatus}
-                            onChange={(e) => handleChange('legalStatus', e.target.value)}
+                            value={formData.owner}
+                            onChange={(e) => handleChange('owner', e.target.value)}
+                            disabled={loadingUsers}
                         >
                             <option value="">Не выбран</option>
-                            <option value="pers_data">Персональные данные</option>
-                            <option value="commercial_secret">Коммерческая тайна</option>
-                            <option value="other">Иное</option>
+                            {users.map(user => (
+                                <option key={user.keycloakId} value={user.keycloakId}>
+                                    {user.firstName} {user.lastName} ({user.email})
+                                </option>
+                            ))}
                         </select>
                     </div>
 
+                    {/* Группа активов (опционально) */}
                     <div className="form-group">
-                        <label>Группа активов</label>
+                        <label>Группа</label>
                         <select
                             className="input select"
                             value={formData.groupId}
@@ -211,13 +229,41 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                         </select>
                     </div>
 
+                    {/* Стоимость (опционально) */}
+                    <div className="form-group">
+                        <label>Стоимость (руб.)</label>
+                        <input
+                            type="number"
+                            className="input"
+                            value={formData.value}
+                            onChange={(e) => handleChange('value', e.target.value)}
+                            step="0.01"
+                        />
+                    </div>
+
+                    {/* Правовой статус (опционально) */}
+                    <div className="form-group">
+                        <label>Правовой статус</label>
+                        <select
+                            className="input select"
+                            value={formData.legalStatus}
+                            onChange={(e) => handleChange('legalStatus', e.target.value)}
+                        >
+                            <option value="">Не выбран</option>
+                            <option value="pers_data">Персональные данные</option>
+                            <option value="commercial_secret">Коммерческая тайна</option>
+                            <option value="other">Иное</option>
+                        </select>
+                    </div>
+
+                    {/* Веса CIA (опционально) */}
                     <div className="form-group">
                         <label>Вес конфиденциальности (0-2)</label>
                         <input
                             type="number"
                             className="input"
                             value={formData.weightC}
-                            onChange={(e) => handleChange('weightC', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleChange('weightC', e.target.value)}
                             min="0"
                             max="2"
                             step="1"
@@ -229,7 +275,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                             type="number"
                             className="input"
                             value={formData.weightI}
-                            onChange={(e) => handleChange('weightI', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleChange('weightI', e.target.value)}
                             min="0"
                             max="2"
                             step="1"
@@ -241,13 +287,25 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                             type="number"
                             className="input"
                             value={formData.weightA}
-                            onChange={(e) => handleChange('weightA', parseInt(e.target.value) || 0)}
+                            onChange={(e) => handleChange('weightA', e.target.value)}
                             min="0"
                             max="2"
                             step="1"
                         />
                     </div>
 
+                    {/* Местоположение (опционально) */}
+                    <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                        <label>Местоположение</label>
+                        <input
+                            className="input"
+                            value={formData.location}
+                            onChange={(e) => handleChange('location', e.target.value)}
+                            placeholder="Физическое или логическое расположение"
+                        />
+                    </div>
+
+                    {/* Описание (опционально) */}
                     <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label>Описание</label>
                         <textarea
@@ -260,11 +318,15 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                         />
                     </div>
 
+                    {/* Оценка CIA (обязательная) */}
                     <div style={{ gridColumn: 'span 2' }}>
                         <CIAInput
                             values={formData}
                             onChange={(cia) => setFormData(prev => ({ ...prev, ...cia }))}
                         />
+                        <small style={{ color: 'var(--text-light)' }}>
+                            <span style={{ color: 'red' }}>*</span> Конфиденциальность, целостность, доступность обязательны
+                        </small>
                     </div>
                 </div>
 
