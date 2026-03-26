@@ -63,7 +63,6 @@ const AssetRegistry = () => {
 
     const mapAssetToForm = (asset) => ({
         name: asset.name,
-        category: asset.category,
         owner: asset.ownerId,
         status: mapStatusToClient(asset.status),
         confidentiality: mapCiaToClient(asset.confidentiality),
@@ -89,7 +88,6 @@ const AssetRegistry = () => {
             width: 200,
             renderCell: (params) => <strong>{params.value}</strong>
         },
-        { field: 'category', headerName: 'Категория', width: 130 },
         { field: 'ownerId', headerName: 'Владелец (ID)', width: 150 },
         {
             field: 'status',

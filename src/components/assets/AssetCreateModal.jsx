@@ -1,5 +1,3 @@
-// src/components/assets/AssetCreateModal.jsx
-
 import React, { useState, useEffect } from 'react';
 import CIAInput from './CIAInput';
 import { getAssetGroups } from '../../services/assetApi';
@@ -13,8 +11,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
     const [formData, setFormData] = useState(initialData || {
         name: '',
         description: '',
-        category: '',
-        owner: '',          // keycloakId
+        owner: '',
         location: '',
         status: 'active',
         confidentiality: 'medium',
@@ -29,7 +26,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
         groupId: ''
     });
 
-    // Загрузка справочников
     useEffect(() => {
         const loadGroups = async () => {
             const groupsData = await getAssetGroups();
@@ -50,7 +46,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
         loadUsers();
     }, []);
 
-    // Маппинг статусов и CIA для отправки на сервер
     const statusMap = {
         active: 'ACTIVE',
         needs_review: 'NEEDS_REVIEW',
@@ -70,7 +65,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
     };
 
     const handleSubmit = () => {
-        // Валидация обязательных полей
         if (!formData.name.trim()) {
             alert('Наименование актива обязательно');
             return;
@@ -94,8 +88,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
 
         const requestData = {
             name: formData.name.trim(),
-            category: formData.category || null,
-            ownerId: formData.owner || null,               // keycloakId или null
+            ownerId: formData.owner || null,
             status: statusMap[formData.status],
             confidentiality: ciaMap[formData.confidentiality],
             integrity: ciaMap[formData.integrity],
@@ -112,7 +105,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
             groupId: formData.groupId || null
         };
 
-        console.log('📤 Sending asset data:', requestData); // для отладки
+        console.log('📤 Sending asset data:', requestData);
         onSave(requestData);
     };
 
@@ -159,22 +152,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData }) => {
                             onChange={(e) => handleChange('name', e.target.value)}
                             placeholder="Введите наименование актива"
                         />
-                    </div>
-
-                    {/* Категория (опционально) */}
-                    <div className="form-group">
-                        <label>Категория</label>
-                        <select
-                            className="input select"
-                            value={formData.category}
-                            onChange={(e) => handleChange('category', e.target.value)}
-                        >
-                            <option value="">Выберите категорию</option>
-                            <option value="database">Базы данных</option>
-                            <option value="documentation">Документация</option>
-                            <option value="software">ПО</option>
-                            <option value="hardware">Оборудование</option>
-                        </select>
                     </div>
 
                     {/* Статус (обязательный) */}
