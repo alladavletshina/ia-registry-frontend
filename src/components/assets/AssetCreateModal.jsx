@@ -6,7 +6,7 @@ import threatApi from '../../services/threatApi';
 import assetApi from '../../services/assetApi';
 import '../../styles/prototype.css';
 
-const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], assetId }) => {
+const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], assetId, currentRisk }) => {
     const [groups, setGroups] = useState([]);
     const [users, setUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
@@ -28,7 +28,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         groupId: ''
     });
 
-    // Состояние для угроз
     const [selectedThreats, setSelectedThreats] = useState([]);
     const [existingThreatsList, setExistingThreatsList] = useState(existingThreats);
     const [threatSearch, setThreatSearch] = useState('');
@@ -41,7 +40,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         mitigationEffect: 0
     });
 
-    // Загрузка справочников
     useEffect(() => {
         const loadGroups = async () => {
             const groupsData = await getAssetGroups();
@@ -122,7 +120,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         }
     };
 
-    // Маппинг статусов и CIA
     const statusMap = {
         active: 'ACTIVE',
         needs_review: 'NEEDS_REVIEW',
@@ -141,7 +138,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
     };
 
     const handleSubmit = async () => {
-        // Валидация обязательных полей
         if (!formData.name.trim()) {
             alert('Наименование актива обязательно');
             return;
@@ -185,9 +181,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         try {
             let savedAsset;
             if (assetId) {
-                // Редактирование
                 savedAsset = await assetApi.update(assetId, requestData);
-                // Добавляем новые угрозы
                 for (const threat of selectedThreats) {
                     await assetApi.addAssetThreat(savedAsset.id, {
                         threatId: parseInt(threat.threatId),
@@ -196,7 +190,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                     });
                 }
             } else {
-                // Создание
                 savedAsset = await assetApi.create(requestData);
                 for (const threat of selectedThreats) {
                     await assetApi.addAssetThreat(savedAsset.id, {
@@ -217,7 +210,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         <div style={{ marginTop: '24px', borderTop: '1px solid var(--border)', paddingTop: '24px' }}>
             <h4 style={{ marginBottom: '16px' }}>Угрозы</h4>
 
-            {/* Существующие угрозы */}
             {existingThreatsList.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
                     <label>Текущие угрозы актива:</label>
@@ -236,7 +228,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                 </div>
             )}
 
-            {/* Новые угрозы (ещё не сохранённые) */}
             {selectedThreats.length > 0 && (
                 <div style={{ marginBottom: '16px' }}>
                     <label>Новые угрозы:</label>
@@ -345,16 +336,21 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
             }}>
                 <h3 style={{ marginBottom: '24px' }}>{assetId ? 'Редактирование' : 'Создание'} актива</h3>
 
-                {/* Основное содержимое – будет прокручиваться */}
+                {currentRisk && (
+                    <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
+                        <strong>Текущий интегральный риск:</strong> {currentRisk.calculatedRisk?.toLocaleString()} руб.
+                    </div>
+                )}
+
                 <div style={{ flex: 1 }}>
                     <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-                        {/* Наименование (обязательное) */}
+                        {/* Наименование */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontWeight: 'bold' }}>Наименование <span style={{ color: 'red' }}>*</span></label>
                             <input className="input" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Введите наименование актива" />
                         </div>
 
-                        {/* Статус (обязательный) */}
+                        {/* Статус */}
                         <div className="form-group">
                             <label style={{ fontWeight: 'bold' }}>Статус <span style={{ color: 'red' }}>*</span></label>
                             <select className="input select" value={formData.status} onChange={(e) => handleChange('status', e.target.value)}>
@@ -365,7 +361,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Владелец (опционально) */}
+                        {/* Владелец */}
                         <div className="form-group">
                             <label>Владелец</label>
                             <select className="input select" value={formData.owner} onChange={(e) => handleChange('owner', e.target.value)} disabled={loadingUsers}>
@@ -378,7 +374,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Группа активов (опционально) */}
+                        {/* Группа */}
                         <div className="form-group">
                             <label>Группа</label>
                             <select className="input select" value={formData.groupId} onChange={(e) => handleChange('groupId', e.target.value)}>
@@ -389,13 +385,13 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Стоимость (опционально) */}
+                        {/* Стоимость */}
                         <div className="form-group">
                             <label>Стоимость (руб.)</label>
                             <input type="number" className="input" value={formData.value} onChange={(e) => handleChange('value', e.target.value)} step="0.01" />
                         </div>
 
-                        {/* Правовой статус (опционально) */}
+                        {/* Правовой статус */}
                         <div className="form-group">
                             <label>Правовой статус</label>
                             <select className="input select" value={formData.legalStatus} onChange={(e) => handleChange('legalStatus', e.target.value)}>
@@ -406,7 +402,7 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Веса CIA (опционально) */}
+                        {/* Веса CIA */}
                         <div className="form-group">
                             <label>Вес конфиденциальности (0-2)</label>
                             <input type="number" className="input" value={formData.weightC} onChange={(e) => handleChange('weightC', e.target.value)} min="0" max="2" step="1" />
@@ -420,30 +416,28 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             <input type="number" className="input" value={formData.weightA} onChange={(e) => handleChange('weightA', e.target.value)} min="0" max="2" step="1" />
                         </div>
 
-                        {/* Местоположение (опционально) */}
+                        {/* Местоположение */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label>Местоположение</label>
                             <input className="input" value={formData.location} onChange={(e) => handleChange('location', e.target.value)} placeholder="Физическое или логическое расположение" />
                         </div>
 
-                        {/* Описание (опционально) */}
+                        {/* Описание */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label>Описание</label>
                             <textarea className="input" rows={4} value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Подробное описание актива" style={{ width: '100%', resize: 'vertical' }} />
                         </div>
 
-                        {/* Оценка CIA (обязательная) */}
+                        {/* Оценка CIA */}
                         <div style={{ gridColumn: 'span 2' }}>
                             <CIAInput values={formData} onChange={(cia) => setFormData(prev => ({ ...prev, ...cia }))} />
                             <small style={{ color: 'var(--text-light)' }}><span style={{ color: 'red' }}>*</span> Конфиденциальность, целостность, доступность обязательны</small>
                         </div>
                     </div>
 
-                    {/* Секция угроз */}
                     {renderThreatSection()}
                 </div>
 
-                {/* Кнопки – всегда внизу */}
                 <div className="modal-actions" style={{
                     display: 'flex',
                     justifyContent: 'flex-end',
