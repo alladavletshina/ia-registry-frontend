@@ -21,13 +21,11 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         availability: 'medium',
         tags: '',
         value: 0,
-        weightC: 1,
-        weightI: 1,
-        weightA: 1,
         legalStatus: '',
         groupId: ''
     });
 
+    // Состояние для угроз
     const [selectedThreats, setSelectedThreats] = useState([]);
     const [existingThreatsList, setExistingThreatsList] = useState(existingThreats);
     const [threatSearch, setThreatSearch] = useState('');
@@ -129,8 +127,16 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
     const ciaMap = {
         low: 'LOW',
         medium: 'MEDIUM',
-        high: 'HIGH',
-        critical: 'CRITICAL'
+        high: 'HIGH'
+    };
+
+    const getWeightFromLevel = (level) => {
+        switch (level) {
+            case 'low': return 0;
+            case 'medium': return 1;
+            case 'high': return 2;
+            default: return 1;
+        }
     };
 
     const handleChange = (field, value) => {
@@ -171,9 +177,9 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
             location: formData.location || null,
             tags: formData.tags || null,
             value: Number(formData.value) || 0,
-            weightC: Number(formData.weightC) || 1,
-            weightI: Number(formData.weightI) || 1,
-            weightA: Number(formData.weightA) || 1,
+            weightC: getWeightFromLevel(formData.confidentiality),
+            weightI: getWeightFromLevel(formData.integrity),
+            weightA: getWeightFromLevel(formData.availability),
             legalStatus: formData.legalStatus || null,
             groupId: formData.groupId || null
         };
@@ -344,13 +350,11 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
 
                 <div style={{ flex: 1 }}>
                     <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-                        {/* Наименование */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontWeight: 'bold' }}>Наименование <span style={{ color: 'red' }}>*</span></label>
                             <input className="input" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Введите наименование актива" />
                         </div>
 
-                        {/* Статус */}
                         <div className="form-group">
                             <label style={{ fontWeight: 'bold' }}>Статус <span style={{ color: 'red' }}>*</span></label>
                             <select className="input select" value={formData.status} onChange={(e) => handleChange('status', e.target.value)}>
@@ -361,7 +365,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Владелец */}
                         <div className="form-group">
                             <label>Владелец</label>
                             <select className="input select" value={formData.owner} onChange={(e) => handleChange('owner', e.target.value)} disabled={loadingUsers}>
@@ -374,7 +377,6 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Группа */}
                         <div className="form-group">
                             <label>Группа</label>
                             <select className="input select" value={formData.groupId} onChange={(e) => handleChange('groupId', e.target.value)}>
@@ -385,13 +387,11 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Стоимость */}
                         <div className="form-group">
                             <label>Стоимость (руб.)</label>
                             <input type="number" className="input" value={formData.value} onChange={(e) => handleChange('value', e.target.value)} step="0.01" />
                         </div>
 
-                        {/* Правовой статус */}
                         <div className="form-group">
                             <label>Правовой статус</label>
                             <select className="input select" value={formData.legalStatus} onChange={(e) => handleChange('legalStatus', e.target.value)}>
@@ -402,36 +402,21 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                             </select>
                         </div>
 
-                        {/* Веса CIA */}
-                        <div className="form-group">
-                            <label>Вес конфиденциальности (0-2)</label>
-                            <input type="number" className="input" value={formData.weightC} onChange={(e) => handleChange('weightC', e.target.value)} min="0" max="2" step="1" />
-                        </div>
-                        <div className="form-group">
-                            <label>Вес целостности (0-2)</label>
-                            <input type="number" className="input" value={formData.weightI} onChange={(e) => handleChange('weightI', e.target.value)} min="0" max="2" step="1" />
-                        </div>
-                        <div className="form-group">
-                            <label>Вес доступности (0-2)</label>
-                            <input type="number" className="input" value={formData.weightA} onChange={(e) => handleChange('weightA', e.target.value)} min="0" max="2" step="1" />
-                        </div>
-
-                        {/* Местоположение */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label>Местоположение</label>
                             <input className="input" value={formData.location} onChange={(e) => handleChange('location', e.target.value)} placeholder="Физическое или логическое расположение" />
                         </div>
 
-                        {/* Описание */}
                         <div className="form-group" style={{ gridColumn: 'span 2' }}>
                             <label>Описание</label>
                             <textarea className="input" rows={4} value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Подробное описание актива" style={{ width: '100%', resize: 'vertical' }} />
                         </div>
 
-                        {/* Оценка CIA */}
                         <div style={{ gridColumn: 'span 2' }}>
                             <CIAInput values={formData} onChange={(cia) => setFormData(prev => ({ ...prev, ...cia }))} />
-                            <small style={{ color: 'var(--text-light)' }}><span style={{ color: 'red' }}>*</span> Конфиденциальность, целостность, доступность обязательны</small>
+                            <small style={{ color: 'var(--text-light)' }}>
+                                <span style={{ color: 'red' }}>*</span> Конфиденциальность, целостность, доступность обязательны
+                            </small>
                         </div>
                     </div>
 

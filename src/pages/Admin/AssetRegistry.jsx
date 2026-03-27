@@ -54,6 +54,7 @@ const AssetRegistry = () => {
         }
     };
 
+    // Преобразование статуса для отображения
     const mapStatusToClient = (status) => {
         switch (status) {
             case 'ACTIVE': return 'active';
@@ -64,26 +65,27 @@ const AssetRegistry = () => {
         }
     };
 
-    const mapCiaToClient = (cia) => {
-        if (!cia) return 'medium';
-        return cia.toLowerCase();
+    // Преобразование веса CIA в уровень для отображения в форме редактирования
+    const getLevelFromWeight = (weight) => {
+        if (weight === undefined || weight === null) return 'medium';
+        if (weight <= 0) return 'low';
+        if (weight === 1) return 'medium';
+        if (weight === 2) return 'high';
+        return 'medium';
     };
 
     const mapAssetToForm = (asset) => ({
         name: asset.name,
         owner: asset.ownerId,
         status: mapStatusToClient(asset.status),
-        confidentiality: mapCiaToClient(asset.confidentiality),
-        integrity: mapCiaToClient(asset.integrity),
-        availability: mapCiaToClient(asset.availability),
+        confidentiality: getLevelFromWeight(asset.weightC),
+        integrity: getLevelFromWeight(asset.weightI),
+        availability: getLevelFromWeight(asset.weightA),
         lastReview: asset.lastReview,
         description: asset.description,
         location: asset.location,
         tags: asset.tags,
         value: asset.value,
-        weightC: asset.weightC,
-        weightI: asset.weightI,
-        weightA: asset.weightA,
         legalStatus: asset.legalStatus,
         groupId: asset.group ? asset.group.id : null
     });
@@ -163,26 +165,41 @@ const AssetRegistry = () => {
             <div className="content-header">
                 <h1>Реестр информационных активов</h1>
                 <div className="header-actions">
-                    <button className="btn btn-primary" onClick={() => {
-                        setSelectedAsset(null);
-                        setSelectedAssetId(null);
-                        setSelectedAssetThreats([]);
-                        setShowCreateModal(true);
-                    }}>+ Добавить актив</button>
+                    <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                            setSelectedAsset(null);
+                            setSelectedAssetId(null);
+                            setSelectedAssetThreats([]);
+                            setShowCreateModal(true);
+                        }}
+                    >
+                        + Добавить актив
+                    </button>
                 </div>
             </div>
+
             <div className="main-content">
                 <div className="card">
                     <div className="card-header">
                         <div className="filters">
-                            <input className="input" type="text" placeholder="Поиск по названию..." onChange={(e) => setFilters({...filters, search: e.target.value})} />
-                            <select className="input" onChange={(e) => setFilters({...filters, status: e.target.value})}>
+                            <input
+                                className="input"
+                                type="text"
+                                placeholder="Поиск по названию..."
+                                onChange={(e) => setFilters({...filters, search: e.target.value})}
+                            />
+                            <select
+                                className="input"
+                                onChange={(e) => setFilters({...filters, status: e.target.value})}
+                            >
                                 <option value="">Все статусы</option>
                                 <option value="active">Активен</option>
                                 <option value="needs_review">На проверке</option>
                             </select>
                         </div>
                     </div>
+
                     <div className="card-body" style={{ height: 500, width: '100%' }}>
                         <DataGrid
                             rows={assets}
@@ -196,6 +213,7 @@ const AssetRegistry = () => {
                     </div>
                 </div>
             </div>
+
             {showCreateModal && (
                 <AssetCreateModal
                     assetId={selectedAssetId}

@@ -138,6 +138,16 @@ export const getLatestRisk = async (assetId) => {
     }
 };
 
+export const updateAssetThreat = async (assetId, threatId, threatData) => {
+    try {
+        const response = await assetApi.put(`/${assetId}/threats/${threatId}`, threatData);
+        return response.data;
+    } catch (error) {
+        console.error('Ошибка обновления угрозы:', error);
+        throw error;
+    }
+};
+
 export default {
     getAll: getAllAssets,
     getById: getAssetById,
@@ -150,4 +160,5 @@ export default {
     addAssetThreat,
     removeAssetThreat,
     getLatestRisk,
+    updateAssetThreat,
 };

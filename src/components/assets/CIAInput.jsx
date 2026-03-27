@@ -1,4 +1,3 @@
-// src/components/assets/CIAInput.jsx
 import React from 'react';
 import '../../styles/prototype.css';
 
@@ -10,8 +9,7 @@ const CIAInput = ({ values, onChange }) => {
     const levels = [
         { value: 'low', label: 'Низкий' },
         { value: 'medium', label: 'Средний' },
-        { value: 'high', label: 'Высокий' },
-        { value: 'critical', label: 'Критический' }
+        { value: 'high', label: 'Высокий' }
     ];
 
     return (

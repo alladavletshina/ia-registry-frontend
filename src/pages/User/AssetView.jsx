@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import assetApi from '../../services/assetApi';
 import AddThreatModal from '../../components/assets/AddThreatModal';
+import EditThreatModal from '../../components/assets/EditThreatModal';
 import { useAuth } from '../../contexts/AuthContext';
 import '../../styles/prototype.css';
 
@@ -12,8 +13,14 @@ const AssetView = () => {
     const [risk, setRisk] = useState(null);
     const [activeTab, setActiveTab] = useState('overview');
     const [showAddThreatModal, setShowAddThreatModal] = useState(false);
+    const [editThreat, setEditThreat] = useState(null);
     const { user } = useAuth();
     const isAdmin = user?.role === 'admin';
+
+    // Отладка
+    console.log('User role:', user?.role);
+    console.log('isAdmin:', isAdmin);
+    console.log('Threats count:', threats.length);
 
     useEffect(() => {
         loadAsset();
@@ -84,6 +91,7 @@ const AssetView = () => {
             <div className="asset-content">
                 {activeTab === 'overview' && (
                     <div className="overview-tab">
+                        {/* ... обзорная информация ... */}
                         <div className="detail-section">
                             <h3>Описание</h3>
                             <p>{asset.description || 'Нет описания'}</p>
@@ -123,11 +131,10 @@ const AssetView = () => {
                     <div className="threats-tab">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3>Привязанные угрозы</h3>
-                            {isAdmin && (
-                                <button className="btn btn-primary" onClick={() => setShowAddThreatModal(true)}>
-                                    + Добавить угрозу
-                                </button>
-                            )}
+                            {/* Временно убираем проверку isAdmin для теста */}
+                            <button className="btn btn-primary" onClick={() => setShowAddThreatModal(true)}>
+                                + Добавить угрозу
+                            </button>
                         </div>
 
                         {threats.length === 0 ? (
@@ -143,11 +150,24 @@ const AssetView = () => {
                                                 <div><strong>Эффективность мер:</strong> {threat.mitigationEffect * 100}%</div>
                                                 <div><strong>Дата оценки:</strong> {threat.assessmentDate}</div>
                                             </div>
-                                            {isAdmin && (
-                                                <button className="btn btn-sm btn-danger" onClick={() => handleRemoveThreat(threat.threatId)}>
-                                                    Удалить
-                                                </button>
-                                            )}
+                                            <div>
+                                                {/* Кнопки всегда видны для теста */}
+                                                <>
+                                                    <button
+                                                        className="btn btn-sm btn-secondary"
+                                                        onClick={() => setEditThreat(threat)}
+                                                        style={{ marginRight: '8px' }}
+                                                    >
+                                                        ✏️ Изменить
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-sm btn-danger"
+                                                        onClick={() => handleRemoveThreat(threat.threatId)}
+                                                    >
+                                                        Удалить
+                                                    </button>
+                                                </>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -174,6 +194,19 @@ const AssetView = () => {
                     onThreatAdded={() => {
                         loadThreats();
                         loadRisk();
+                    }}
+                />
+            )}
+
+            {editThreat && (
+                <EditThreatModal
+                    assetId={id}
+                    threat={editThreat}
+                    onClose={() => setEditThreat(null)}
+                    onThreatUpdated={() => {
+                        loadThreats();
+                        loadRisk();
+                        setEditThreat(null);
                     }}
                 />
             )}
