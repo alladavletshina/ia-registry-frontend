@@ -1,14 +1,13 @@
 import axios from 'axios';
-import { refreshAccessToken } from './refreshToken';
 
-const THREATS_API_URL = process.env.REACT_APP_THREATS_API_URL;
+const THREATS_API_URL = process.env.REACT_APP_THREATS_API_URL || 'http://localhost:8082/api/assets/threats';
 
 const threatApi = axios.create({
     baseURL: THREATS_API_URL,
-    timeout: 80000,
+    timeout: 10000,
 });
 
-// Перехватчик запросов (добавление токена)
+// Добавляем токен к каждому запросу
 threatApi.interceptors.request.use(
     (config) => {
         const token = localStorage.getItem('token');
@@ -20,51 +19,21 @@ threatApi.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Перехватчик ответов (обработка 401)
-threatApi.interceptors.response.use(
-    (response) => response,
-    async (error) => {
-        const originalRequest = error.config;
-
-        if (error.response?.status === 401 && !originalRequest._retry) {
-            originalRequest._retry = true;
-
-            try {
-                const newToken = await refreshAccessToken();
-                originalRequest.headers.Authorization = `Bearer ${newToken}`;
-                return threatApi(originalRequest);
-            } catch (refreshError) {
-                return Promise.reject(refreshError);
-            }
-        }
-
-        return Promise.reject(error);
-    }
-);
-
-/**
- * Получить список угроз с пагинацией и поиском
- * @param {Object} params - параметры: page, size, search (опционально)
- */
-export const getThreats = async (params = {}) => {
+// Получить список угроз из справочника (с пагинацией и поиском)
+export const getThreats = async (params = { page: 0, size: 500 }) => {
     try {
         const response = await threatApi.get('', { params });
-        // Бэкенд возвращает Page<ThreatDto>, содержащую content
-        if (response.data && Array.isArray(response.data.content)) {
-            return response.data;
-        }
-        console.error('Неожиданный формат ответа API угроз:', response.data);
-        return { content: [], totalElements: 0 };
+        return response.data;
     } catch (error) {
         console.error('Ошибка загрузки угроз:', error);
         throw error;
     }
 };
 
-/**
- * Получить угрозу по ID
- * @param {string} id - идентификатор угрозы (например, "1")
- */
+// Алиас для удобства
+export const getAll = getThreats;
+
+// Получить одну угрозу по ID
 export const getThreatById = async (id) => {
     try {
         const response = await threatApi.get(`/${id}`);
@@ -75,9 +44,7 @@ export const getThreatById = async (id) => {
     }
 };
 
-/**
- * Запустить синхронизацию с БДУ ФСТЭК вручную
- */
+// Запустить синхронизацию с ФСТЭК (админ)
 export const syncThreats = async () => {
     try {
         const response = await threatApi.post('/sync');
@@ -88,8 +55,13 @@ export const syncThreats = async () => {
     }
 };
 
+// Алиас для sync
+export const sync = syncThreats;
+
 export default {
-    getAll: getThreats,
-    getById: getThreatById,
-    sync: syncThreats,
+    getThreats,
+    getAll,
+    getThreatById,
+    syncThreats,
+    sync,
 };

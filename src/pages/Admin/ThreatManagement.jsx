@@ -214,7 +214,7 @@ const ThreatManagement = () => {
                             rows={threats}
                             columns={columns}
                             loading={loading}
-                            hideFooterPagination   // отключаем встроенную пагинацию
+                            hideFooterPagination
                             disableSelectionOnClick
                             getRowId={(row) => row.id}
                             components={{
@@ -227,19 +227,14 @@ const ThreatManagement = () => {
                         />
                     </div>
 
-                    {/* Ручная пагинация */}
                     <TablePagination
                         component="div"
                         count={totalElements}
                         page={page}
-                        onPageChange={(event, newPage) => {
-                            console.log('Changing page to:', newPage);
-                            setPage(newPage);
-                        }}
+                        onPageChange={(event, newPage) => setPage(newPage)}
                         rowsPerPage={pageSize}
                         onRowsPerPageChange={(event) => {
-                            const newSize = parseInt(event.target.value, 10);
-                            setPageSize(newSize);
+                            setPageSize(parseInt(event.target.value, 10));
                             setPage(0);
                         }}
                         rowsPerPageOptions={[10, 25, 50, 100]}
@@ -255,7 +250,6 @@ const ThreatManagement = () => {
                 </div>
             </div>
 
-            {/* Модальное окно деталей угрозы */}
             <Dialog open={detailOpen} onClose={() => setDetailOpen(false)} maxWidth="md" fullWidth>
                 <DialogTitle>Детали угрозы</DialogTitle>
                 <DialogContent dividers>
