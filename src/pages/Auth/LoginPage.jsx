@@ -111,7 +111,7 @@ const LoginPage = () => {
                         </button>
                         <button
                             type="button"
-                            onClick={() => handleTestLogin('user')}
+                            onClick={() => handleTestLogin('user@examplecompany.com')}
                             style={{...styles.testButton, background: 'var(--primary)'}}
                             disabled={loading}
                         >

@@ -72,7 +72,7 @@ export const AuthProvider = ({ children }) => {
 
             const userData = {
                 username: decoded.preferred_username || username,
-                email: decoded.email || `${username}@example.com`,
+                email: decoded.email || `${username}@examplecompany.com`,
                 fullName: decoded.name || (roles.includes('admin') ? 'Administrator' : 'User'),
                 role,
                 token: access_token,
