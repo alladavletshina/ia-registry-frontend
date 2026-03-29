@@ -156,15 +156,6 @@ const MyAssets = () => {
                                     >
                                         <Visibility /> Подробнее
                                     </button>
-                                    <button
-                                        className="btn btn-primary"
-                                        onClick={() => {
-                                            // Здесь можно открыть модалку запроса на изменение
-                                            alert('Запрос на изменение отправлен администратору');
-                                        }}
-                                    >
-                                        Запросить изменения
-                                    </button>
                                 </div>
                             </div>
                         ))}
