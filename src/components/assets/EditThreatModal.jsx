@@ -66,33 +66,6 @@ const EditThreatModal = ({ assetId, threat, onClose, onThreatUpdated }) => {
                         onChange={(e) => setMitigationEffect(e.target.value)}
                     />
                 </div>
-                <div className="form-group">
-                    <label>Переопределить влияние на CIA</label>
-                    <div style={{ display: 'flex', gap: '16px' }}>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={customC === true}
-                                onChange={(e) => setCustomC(e.target.checked ? true : null)}
-                            /> Конфиденциальность
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={customI === true}
-                                onChange={(e) => setCustomI(e.target.checked ? true : null)}
-                            /> Целостность
-                        </label>
-                        <label>
-                            <input
-                                type="checkbox"
-                                checked={customA === true}
-                                onChange={(e) => setCustomA(e.target.checked ? true : null)}
-                            /> Доступность
-                        </label>
-                    </div>
-                    <small>Оставьте пустым, чтобы использовать значения из угрозы.</small>
-                </div>
                 <div className="modal-actions">
                     <button className="btn btn-secondary" onClick={onClose} disabled={loading}>Отмена</button>
                     <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>

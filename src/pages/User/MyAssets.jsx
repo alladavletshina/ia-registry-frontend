@@ -1,127 +1,119 @@
 import React, { useState, useEffect } from 'react';
-import { mockAssetsAPI } from '../../services/mockApi';
-
-// Создадим AssetCard прямо здесь
-const AssetCard = ({ asset, onRequestUpdate, viewOnly }) => {
-    return (
-        <div style={{
-            background: 'white',
-            borderRadius: '8px',
-            padding: '20px',
-            boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
-            borderLeft: '4px solid #ddd',
-            marginBottom: '15px'
-        }}>
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                marginBottom: '15px'
-            }}>
-                <h4 style={{ margin: 0 }}>{asset.name}</h4>
-                <span style={{
-                    padding: '4px 12px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '500',
-                    background: asset.status === 'active' ? '#e8f5e9' : '#fff3e0',
-                    color: asset.status === 'active' ? '#2e7d32' : '#ef6c00'
-                }}>
-                    {asset.status === 'active' ? 'Активен' : 'Требует проверки'}
-                </span>
-            </div>
-
-            <p style={{ color: '#666', marginBottom: '15px' }}>{asset.description}</p>
-
-            <div style={{ marginBottom: '15px' }}>
-                <div><strong>Категория:</strong> {asset.category}</div>
-                <div><strong>Владелец:</strong> {asset.owner}</div>
-                <div><strong>Последняя проверка:</strong> {asset.lastReview}</div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '20px', marginTop: '15px' }}>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#777' }}>Конф.</div>
-                    <div style={{ fontWeight: 'bold', color: '#f44336' }}>{asset.confidentiality}</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#777' }}>Целост.</div>
-                    <div style={{ fontWeight: 'bold', color: '#ff9800' }}>{asset.integrity}</div>
-                </div>
-                <div style={{ textAlign: 'center' }}>
-                    <div style={{ fontSize: '12px', color: '#777' }}>Доступ.</div>
-                    <div style={{ fontWeight: 'bold', color: '#4caf50' }}>{asset.availability}</div>
-                </div>
-            </div>
-
-            {!viewOnly && (
-                <div style={{ marginTop: '20px', display: 'flex', gap: '10px' }}>
-                    <button
-                        onClick={() => onRequestUpdate(asset.id, { status: 'needs_review' })}
-                        style={{
-                            padding: '8px 16px',
-                            background: '#1976d2',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                        }}
-                    >
-                        Запросить проверку
-                    </button>
-                    <button style={{
-                        padding: '8px 16px',
-                        background: '#f5f5f5',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer'
-                    }}>
-                        Подробнее
-                    </button>
-                </div>
-            )}
-        </div>
-    );
-};
+import assetApi from '../../services/assetApi';
+import { useAuth } from '../../contexts/AuthContext';
+import StatusBadge from '../../components/common/StatusBadge';
+import '../../styles/prototype.css';
 
 const MyAssets = () => {
     const [myAssets, setMyAssets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const { user } = useAuth();
 
     useEffect(() => {
         fetchMyAssets();
     }, []);
 
     const fetchMyAssets = async () => {
+        setLoading(true);
         try {
-            const response = await mockAssetsAPI.getMyAssets();
-            setMyAssets(response.data);
+            // Используем реальный API для получения активов текущего пользователя
+            const data = await assetApi.getMyAssets();
+            setMyAssets(data);
         } catch (error) {
-            console.error('Ошибка загрузки активов:', error);
+            console.error('Ошибка загрузки активов пользователя:', error);
+        } finally {
+            setLoading(false);
         }
     };
 
-    const handleRequestChange = (assetId, changes) => {
-        console.log('Запрос на изменение:', assetId, changes);
+    const handleRequestUpdate = async (assetId, changes) => {
+        // Здесь можно отправить запрос на изменение (например, изменить статус на "needs_review")
+        console.log('Запрос на изменение актива:', assetId, changes);
+        // В реальности можно вызвать API для создания заявки на изменение
         alert('Запрос на изменение отправлен администратору');
     };
 
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Загрузка ваших активов...</p>
+            </div>
+        );
+    }
+
     return (
-        <div>
-            <h2>Мои информационные активы</h2>
-            <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))',
-                gap: '20px',
-                marginTop: '20px'
-            }}>
-                {myAssets.map(asset => (
-                    <AssetCard
-                        key={asset.id}
-                        asset={asset}
-                        onRequestUpdate={handleRequestChange}
-                        viewOnly={false}
-                    />
-                ))}
+        <div className="user-assets">
+            <div className="content-header">
+                <h1>Мои информационные активы</h1>
+                <p>Список активов, за которые вы отвечаете как владелец</p>
+            </div>
+
+            <div className="main-content">
+                {myAssets.length === 0 ? (
+                    <div className="card" style={{ textAlign: 'center', padding: '40px' }}>
+                        <p>У вас пока нет назначенных активов</p>
+                        <p className="text-light">Обратитесь к администратору, чтобы вам назначили активы.</p>
+                    </div>
+                ) : (
+                    <div className="assets-grid" style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))',
+                        gap: '20px'
+                    }}>
+                        {myAssets.map(asset => (
+                            <div key={asset.id} className={`asset-card status-${asset.status?.toLowerCase() || 'active'}`}>
+                                <div className="card-header">
+                                    <h4>{asset.name}</h4>
+                                    <StatusBadge status={asset.status?.toLowerCase()} />
+                                </div>
+                                <div className="card-body">
+                                    <p className="description">{asset.description || 'Нет описания'}</p>
+                                    <div className="metadata">
+                                        <div><strong>Категория:</strong> {asset.category || '—'}</div>
+                                        <div><strong>Владелец:</strong> {asset.ownerId}</div>
+                                        <div><strong>Последняя проверка:</strong> {asset.lastReview || '—'}</div>
+                                        <div><strong>Группа:</strong> {asset.group?.name || '—'}</div>
+                                    </div>
+                                    <div className="cia-rating">
+                                        <div className="cia-item">
+                                            <span className="label">Конф.</span>
+                                            <span className={`value level-${asset.confidentiality?.toLowerCase()}`}>
+                                                {asset.confidentiality}
+                                            </span>
+                                        </div>
+                                        <div className="cia-item">
+                                            <span className="label">Целост.</span>
+                                            <span className={`value level-${asset.integrity?.toLowerCase()}`}>
+                                                {asset.integrity}
+                                            </span>
+                                        </div>
+                                        <div className="cia-item">
+                                            <span className="label">Дост.</span>
+                                            <span className={`value level-${asset.availability?.toLowerCase()}`}>
+                                                {asset.availability}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="card-actions">
+                                        <button
+                                            className="btn btn-secondary flex-1"
+                                            onClick={() => handleRequestUpdate(asset.id, { status: 'needs_review' })}
+                                        >
+                                            Запросить проверку
+                                        </button>
+                                        <button
+                                            className="btn btn-primary flex-1"
+                                            onClick={() => window.location.href = `/user/assets/${asset.id}`}
+                                        >
+                                            Подробнее
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                )}
             </div>
         </div>
     );
