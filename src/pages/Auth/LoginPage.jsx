@@ -107,16 +107,14 @@ const LoginPage = () => {
                             disabled={loading}
                         >
                             <strong>Admin</strong>
-                            <span style={styles.testPassword}>admin123</span>
                         </button>
                         <button
                             type="button"
-                            onClick={() => handleTestLogin('user@examplecompany.com')}
+                            onClick={() => handleTestLogin('User@examplecompany.ru')}
                             style={{...styles.testButton, background: 'var(--primary)'}}
                             disabled={loading}
                         >
                             <strong>User</strong>
-                            <span style={styles.testPassword}>user123</span>
                         </button>
                     </div>
                 </div>
