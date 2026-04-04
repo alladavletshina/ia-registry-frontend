@@ -129,6 +129,16 @@ export const exportUsersToCsv = async () => {
     }
 };
 
+export const updateCurrentUser = async (userData) => {
+    try {
+        const response = await userApi.put('/me', userData);
+        return response.data;
+    } catch (error) {
+        console.error('Ошибка обновления текущего пользователя:', error);
+        throw error;
+    }
+};
+
 export default {
     getAll: getAllUsers,
     getById: getUserById,
@@ -137,4 +147,5 @@ export default {
     delete: deleteUser,
     getCurrentUser,
     exportToCsv: exportUsersToCsv,
+    updateCurrentUser,
 };
