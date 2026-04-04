@@ -1,5 +1,6 @@
 // src/pages/Admin/UserManagement.jsx (ОБНОВЛЕННАЯ ВЕРСИЯ)
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { DataGrid } from '@mui/x-data-grid';
 import {
     Switch,
@@ -31,6 +32,7 @@ const UserManagement = () => {
     const [users, setUsers] = useState([]);
     const [filteredUsers, setFilteredUsers] = useState([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const [selectedUsers, setSelectedUsers] = useState([]);
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [filters, setFilters] = useState({
@@ -257,12 +259,7 @@ const UserManagement = () => {
             width: 150,
             renderCell: (params) => (
                 <div className="action-buttons" style={{ display: 'flex', gap: '4px' }}>
-                    <Button
-                        size="small"
-                        variant="outlined"
-                        startIcon={<Visibility />}
-                        onClick={() => window.open(`/admin/users/${params.row.id}`, '_blank')}
-                    >
+                    <Button size="small" variant="outlined" startIcon={<Visibility />} onClick={() => navigate(`/admin/users/${params.row.id}`)}>
                         Просмотр
                     </Button>
                 </div>
@@ -276,15 +273,6 @@ const UserManagement = () => {
         <div className="user-management">
             <div className="content-header">
                 <h1>Управление пользователями</h1>
-                <div className="header-actions">
-                    <Button
-                        variant="contained"
-                        startIcon={<Add />}
-                        onClick={() => setShowCreateModal(true)}
-                    >
-                        Добавить пользователя
-                    </Button>
-                </div>
             </div>
 
             <div className="main-content">

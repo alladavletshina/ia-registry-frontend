@@ -14,6 +14,7 @@ import ReportsPage from '../pages/Admin/ReportsPage';
 import AdminSettings from '../pages/Admin/AdminSettings';
 import AssetDetail from '../pages/Admin/AssetDetail';
 import AuditLogPage from "../pages/Admin/AuditLogPage";
+import UserDetail from '../pages/Admin/UserDetail';
 import NotificationCenter from '../components/admin/NotificationCenter';
 import AccessDenied from '../components/common/AccessDenied';
 
@@ -274,6 +275,7 @@ const AdminLayout = () => {
                 <main className="main-content">
                     <Routes>
                         <Route path="dashboard" element={<AdminDashboard />} />
+                        <Route path="users/:id" element={<UserDetail />} />
                         <Route path="assets" element={<AssetRegistry />} />
                         <Route path="assets/:id" element={<AssetDetail />} />
                         <Route path="users" element={<UserManagement />} />
