@@ -267,11 +267,11 @@ const ReportsPage = () => {
                 {/* Первая строка: Рост активов + Уровень конфиденциальности (рядом) */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
                     <div className="chart-card" style={{ flex: '1 1 400px' }}>
-                        <h4>📈 Рост количества активов</h4>
+                        <h4>Рост количества активов</h4>
                         <SimpleLineChart data={growthTrend || []} width={500} height={350} />
                     </div>
                     <div className="chart-card" style={{ flex: '1 1 400px' }}>
-                        <h4>🔒 Уровень конфиденциальности</h4>
+                        <h4>Уровень конфиденциальности</h4>
                         <SimpleBarChart data={byConfidentiality || []} width={500} height={350} />
                     </div>
                 </div>
@@ -279,11 +279,11 @@ const ReportsPage = () => {
                 {/* Вторая строка: Активы по группам + Статус активов (рядом) */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
                     <div className="chart-card" style={{ flex: '1 1 400px' }}>
-                        <h4>📊 Активы по группам</h4>
+                        <h4>Активы по группам</h4>
                         <SimpleBarChart data={byCategory || []} width={500} height={350} />
                     </div>
                     <div className="chart-card" style={{ flex: '1 1 400px' }}>
-                        <h4>🥧 Статус активов</h4>
+                        <h4>Статус активов</h4>
                         <SimplePieChart data={byStatus || []} width={350} height={350} />
                     </div>
                 </div>
