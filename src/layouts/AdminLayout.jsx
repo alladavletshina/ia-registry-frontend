@@ -11,7 +11,6 @@ import AssetRegistry from '../pages/Admin/AssetRegistry';
 import UserManagement from '../pages/Admin/UserManagement';
 import ThreatManagement from '../pages/Admin/ThreatManagement';
 import ReportsPage from '../pages/Admin/ReportsPage';
-import AdminSettings from '../pages/Admin/AdminSettings';
 import AssetDetail from '../pages/Admin/AssetDetail';
 import AuditLogPage from "../pages/Admin/AuditLogPage";
 import UserDetail from '../pages/Admin/UserDetail';
@@ -95,7 +94,6 @@ const AdminLayout = () => {
         { path: '/admin/audit', icon: '📋', label: 'Журнал аудита', requiredRole: 'admin' },
         { path: '/admin/tasks', icon: '✅', label: 'Задачи', requiredRole: 'admin' },
         { path: '/admin/reports', icon: '📈', label: 'Отчеты', requiredRole: 'admin' },
-        { path: '/admin/settings', icon: '⚙️', label: 'Настройки', requiredRole: 'admin' },
     ];
 
     // Если проверка еще не завершена, показываем загрузку
@@ -283,7 +281,6 @@ const AdminLayout = () => {
                         <Route path="threats" element={<ThreatManagement />} />
                         <Route path="audit" element={<AuditLogPage />} />
                         <Route path="reports" element={<ReportsPage />} />
-                        <Route path="settings" element={<AdminSettings />} />
 
                         {/* Защищенный маршрут для 404 в админ-зоне */}
                         <Route path="*" element={
