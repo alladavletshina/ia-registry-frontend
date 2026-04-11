@@ -3,6 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import AdminTasks from '../pages/Admin/AdminTasks';
 import { useAuth } from '../contexts/AuthContext';
+import notificationApi from '../services/notificationApi';
+import TaskDetail from '../components/tasks/TaskDetail';
 import '../styles/prototype.css';
 
 // Импортируем страницы админа
@@ -23,7 +25,7 @@ const AdminLayout = () => {
     const location = useLocation(); // <-- Для отслеживания текущего пути
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
     const [showNotifications, setShowNotifications] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(3);
+    const [unreadCount, setUnreadCount] = useState(0);
     const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
     // Проверяем авторизацию при загрузке и изменении маршрута
@@ -66,6 +68,23 @@ const AdminLayout = () => {
 
         checkAuthAndRole();
     }, [isAuthenticated, user, loading, navigate, location]);
+
+    // Добавить useEffect для polling
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            try {
+                const { count } = await notificationApi.getUnreadCount();
+                setUnreadCount(count);
+            } catch (error) {
+                console.error('Failed to fetch unread count:', error);
+            }
+        };
+
+        fetchUnreadCount(); // первый вызов
+        const interval = setInterval(fetchUnreadCount, 30000); // каждые 30 секунд
+
+        return () => clearInterval(interval);
+    }, []);
 
     // Защищаем уведомления от кликов вне зоны
     useEffect(() => {
@@ -281,6 +300,7 @@ const AdminLayout = () => {
                         <Route path="threats" element={<ThreatManagement />} />
                         <Route path="audit" element={<AuditLogPage />} />
                         <Route path="reports" element={<ReportsPage />} />
+                        <Route path="tasks/:id" element={<TaskDetail />} />
 
                         {/* Защищенный маршрут для 404 в админ-зоне */}
                         <Route path="*" element={

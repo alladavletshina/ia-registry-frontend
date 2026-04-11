@@ -15,46 +15,69 @@ const AdminDashboard = () => {
     });
     const [recentActivities, setRecentActivities] = useState([]);
     const [topAssets, setTopAssets] = useState([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         loadDashboardData();
     }, []);
 
     const loadDashboardData = async () => {
+        setLoading(true);
         try {
-            // Получаем данные
-            const assetsResponse = await assetApi.getAll();
-            const usersResponse = await assetApi.getAll();
-            const assets = assetsResponse.data;
+            // Получаем данные и нормализуем в массив
+            let assets = [];
+            let users = [];
 
-            // Рассчитываем статистику
+            const assetsResponse = await assetApi.getAll();
+            if (Array.isArray(assetsResponse)) {
+                assets = assetsResponse;
+            } else if (assetsResponse && Array.isArray(assetsResponse.data)) {
+                assets = assetsResponse.data;
+            }
+
+            const usersResponse = await userApi.getAll();
+            if (Array.isArray(usersResponse)) {
+                users = usersResponse;
+            } else if (usersResponse && Array.isArray(usersResponse.data)) {
+                users = usersResponse.data;
+            }
+
             const pendingReviews = assets.filter(a => a.status === 'needs_review').length;
             const highRiskAssets = assets.filter(a =>
-                a.confidentiality === 'high' ||
-                a.integrity === 'high' ||
-                a.availability === 'high'
+                a.confidentiality === 'HIGH' ||
+                a.integrity === 'HIGH' ||
+                a.availability === 'HIGH'
             ).length;
 
             setStats({
                 totalAssets: assets.length,
-                totalUsers: usersResponse.data.length,
+                totalUsers: users.length,
                 pendingReviews,
                 highRiskAssets
             });
 
-            // Недавние активности
             setRecentActivities([
                 { id: 1, user: 'Иванов И.И.', action: 'Создал актив', asset: 'CRM система', time: '10:30' },
                 { id: 2, user: 'Петрова А.С.', action: 'Запросил проверку', asset: 'Внутренняя документация', time: '11:15' },
                 { id: 3, user: 'Администратор', action: 'Обновил категорию', asset: 'База данных клиентов', time: '14:20' },
             ]);
 
-            // Топ активы по важности
             setTopAssets(assets.slice(0, 3));
         } catch (error) {
             console.error('Ошибка загрузки дашборда:', error);
+        } finally {
+            setLoading(false);
         }
     };
+
+    if (loading) {
+        return (
+            <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p>Загрузка данных...</p>
+            </div>
+        );
+    }
 
     return (
         <div className="user-dashboard">
@@ -198,12 +221,6 @@ const AdminDashboard = () => {
                                     onClick={() => window.location.href = '/admin/reports'}
                                 >
                                     📊 Создать отчет
-                                </button>
-                                <button
-                                    className="quick-action-btn"
-                                    onClick={() => window.location.href = '/admin/settings'}
-                                >
-                                    ⚙️ Настройки системы
                                 </button>
                             </div>
                         </div>

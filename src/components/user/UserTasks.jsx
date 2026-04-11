@@ -1,5 +1,5 @@
-// src/components/user/UserTasks.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
     CheckCircle,
     HourglassEmpty,
@@ -16,12 +16,12 @@ import {
 } from '@mui/icons-material';
 import { useAuth } from '../../contexts/AuthContext';
 import taskApi from '../../services/taskApi';
-import userApi from '../../services/userApi'; // импортируем userApi
+import userApi from '../../services/userApi';
 import '../../styles/prototype.css';
 
 const UserTasks = () => {
+    const navigate = useNavigate();
     const { user } = useAuth();
-    // Внутренний UUID пользователя из user-service
     const [internalUserId, setInternalUserId] = useState(null);
     const [profileError, setProfileError] = useState(false);
     const [tasks, setTasks] = useState([]);
@@ -44,11 +44,11 @@ const UserTasks = () => {
         assetId: null
     });
 
-    // 1. Загружаем профиль пользователя при монтировании компонента
+    // Загрузка профиля пользователя
     useEffect(() => {
         const fetchUserProfile = async () => {
             try {
-                const profile = await userApi.getCurrentUser(); // ожидаем объект с полем id
+                const profile = await userApi.getCurrentUser();
                 setInternalUserId(profile.id);
                 setProfileError(false);
             } catch (error) {
@@ -74,15 +74,9 @@ const UserTasks = () => {
     const loadTasks = useCallback(async () => {
         setLoading(true);
         try {
-            // Формируем параметры запроса
             const params = {};
-            if (internalUserId) {
-                params.userId = internalUserId; // используем внутренний ID
-            }
-            if (search) {
-                params.search = search;
-            }
-            // Убираем пустые значения
+            if (internalUserId) params.userId = internalUserId;
+            if (search) params.search = search;
             const cleanParams = Object.fromEntries(
                 Object.entries(params).filter(([_, v]) => v != null && v !== '')
             );
@@ -106,7 +100,6 @@ const UserTasks = () => {
         }
     }, []);
 
-    // 2. Загружаем задачи только когда известен internalUserId
     useEffect(() => {
         if (internalUserId) {
             loadTasks();
@@ -114,18 +107,13 @@ const UserTasks = () => {
         }
     }, [loadTasks, loadStats, internalUserId]);
 
-    // Фильтрация на клиенте (поиск и статус)
     const filteredTasks = tasks.filter(task => {
         if (filter !== 'all') {
             if (filter === 'overdue') {
                 const today = new Date();
                 const dueDate = new Date(task.dueDate);
-                if (!(dueDate < today && task.status !== 'COMPLETED')) {
-                    return false;
-                }
-            } else if (filter !== task.status) {
-                return false;
-            }
+                if (!(dueDate < today && task.status !== 'COMPLETED')) return false;
+            } else if (filter !== task.status) return false;
         }
         if (search) {
             const searchLower = search.toLowerCase();
@@ -164,8 +152,6 @@ const UserTasks = () => {
                 estimatedTime: '2 часа',
                 tags: [],
                 assetId: newTask.assetId
-                // Если задача должна назначаться на текущего пользователя, добавьте:
-                // assignedTo: internalUserId
             };
             await taskApi.create(taskData);
             setShowCreateModal(false);
@@ -302,37 +288,25 @@ const UserTasks = () => {
             }}>
                 <div className="stat-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <h4>Всего задач</h4>
-                            <p className="number" style={{ fontSize: '32px', margin: '8px 0' }}>{stats.total}</p>
-                        </div>
+                        <div><h4>Всего задач</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0' }}>{stats.total}</p></div>
                         <Assignment style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
                     </div>
                 </div>
                 <div className="stat-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <h4>В работе</h4>
-                            <p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#3b82f6' }}>{stats.inProgress}</p>
-                        </div>
+                        <div><h4>В работе</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#3b82f6' }}>{stats.inProgress}</p></div>
                         <HourglassEmpty style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
                     </div>
                 </div>
                 <div className="stat-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <h4>Выполнено</h4>
-                            <p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#10b981' }}>{stats.completed}</p>
-                        </div>
+                        <div><h4>Выполнено</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#10b981' }}>{stats.completed}</p></div>
                         <CheckCircle style={{ fontSize: '32px', color: '#10b981', opacity: 0.7 }} />
                     </div>
                 </div>
                 <div className="stat-card">
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div>
-                            <h4>Просрочено</h4>
-                            <p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#ef4444' }}>{stats.overdue}</p>
-                        </div>
+                        <div><h4>Просрочено</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#ef4444' }}>{stats.overdue}</p></div>
                         <Warning style={{ fontSize: '32px', color: '#ef4444', opacity: 0.7 }} />
                     </div>
                 </div>
@@ -357,21 +331,9 @@ const UserTasks = () => {
                                 onChange={(e) => setSearch(e.target.value)}
                                 style={{ width: '250px', paddingLeft: '40px' }}
                             />
-                            <FilterList style={{
-                                position: 'absolute',
-                                left: '12px',
-                                top: '50%',
-                                transform: 'translateY(-50%)',
-                                color: '#94a3b8'
-                            }} />
+                            <FilterList style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                         </div>
-
-                        <select
-                            className="input select"
-                            value={filter}
-                            onChange={(e) => setFilter(e.target.value)}
-                            style={{ width: '150px' }}
-                        >
+                        <select className="input select" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: '150px' }}>
                             <option value="all">Все задачи</option>
                             <option value="PENDING">Ожидающие</option>
                             <option value="IN_PROGRESS">В работе</option>
@@ -379,21 +341,12 @@ const UserTasks = () => {
                             <option value="overdue">Просроченные</option>
                         </select>
                     </div>
-
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button
-                            className="btn btn-secondary"
-                            onClick={exportTasks}
-                            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                        >
+                        <button className="btn btn-secondary" onClick={exportTasks} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <Download /> Экспорт
                         </button>
                         {isAdmin && (
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setShowCreateModal(true)}
-                                style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
-                            >
+                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                 <Add /> Новая задача
                             </button>
                         )}
@@ -404,25 +357,14 @@ const UserTasks = () => {
             {/* Список задач */}
             <div className="tasks-list">
                 {filteredTasks.length === 0 ? (
-                    <div className="empty-state" style={{
-                        textAlign: 'center',
-                        padding: '60px 20px',
-                        background: 'var(--bg-light)',
-                        borderRadius: 'var(--radius-lg)',
-                        border: '1px solid var(--border)'
-                    }}>
-                        <Assignment style={{ fontSize: '48px', color: '#94a3b8', marginBottom: '16px' }} />
-                        <h4 style={{ color: '#64748b', marginBottom: '8px' }}>Нет задач</h4>
-                        <p style={{ color: '#94a3b8', marginBottom: '24px' }}>
+                    <div className="empty-state" style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-light)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+                        <Assignment style={{ fontSize: 48, color: '#94a3b8', marginBottom: 16 }} />
+                        <h4 style={{ color: '#64748b', marginBottom: 8 }}>Нет задач</h4>
+                        <p style={{ color: '#94a3b8', marginBottom: 24 }}>
                             {search ? 'По вашему запросу задачи не найдены' : 'У вас пока нет назначенных задач'}
                         </p>
                         {isAdmin && (
-                            <button
-                                className="btn btn-primary"
-                                onClick={() => setShowCreateModal(true)}
-                            >
-                                Создать первую задачу
-                            </button>
+                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>Создать первую задачу</button>
                         )}
                     </div>
                 ) : (
@@ -439,27 +381,13 @@ const UserTasks = () => {
                                 transition: 'all var(--transition-fast)',
                                 position: 'relative',
                                 borderLeft: `4px solid ${
-                                    task.priority === 'HIGH' ? '#ef4444' :
-                                        task.priority === 'MEDIUM' ? '#f59e0b' : '#10b981'
+                                    task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f59e0b' : '#10b981'
                                 }`,
                                 boxShadow: isOverdue(task.dueDate, task.status) ? '0 0 0 2px rgba(239, 68, 68, 0.1)' : 'var(--shadow-sm)'
                             }}
                         >
                             {isOverdue(task.dueDate, task.status) && (
-                                <div style={{
-                                    position: 'absolute',
-                                    top: '-8px',
-                                    right: '16px',
-                                    background: '#ef4444',
-                                    color: 'white',
-                                    padding: '4px 12px',
-                                    borderRadius: 'var(--radius-full)',
-                                    fontSize: '11px',
-                                    fontWeight: 'bold',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    gap: '4px'
-                                }}>
+                                <div style={{ position: 'absolute', top: '-8px', right: '16px', background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Warning fontSize="small" /> ПРОСРОЧЕНО
                                 </div>
                             )}
@@ -475,45 +403,20 @@ const UserTasks = () => {
                                             <span className={`badge badge-${task.status === 'COMPLETED' ? 'success' : task.status === 'OVERDUE' ? 'danger' : task.status === 'IN_PROGRESS' ? 'primary' : 'warning'}`}>
                                                 {getStatusIcon(task.status)} {getStatusText(task.status)}
                                             </span>
-                                            <span className="badge badge-secondary">
-                                                {getTypeText(task.type)}
-                                            </span>
+                                            <span className="badge badge-secondary">{getTypeText(task.type)}</span>
                                         </div>
                                     </div>
-
-                                    <p style={{ color: 'var(--text-light)', marginBottom: '16px', lineHeight: 1.6 }}>
-                                        {task.description}
-                                    </p>
-
+                                    <p style={{ color: 'var(--text-light)', marginBottom: '16px', lineHeight: 1.6 }}>{task.description}</p>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                                         {task.tags?.map((tag, index) => (
-                                            <span key={index} style={{
-                                                padding: '4px 10px',
-                                                background: 'var(--bg-light)',
-                                                borderRadius: 'var(--radius-full)',
-                                                fontSize: '12px',
-                                                color: 'var(--text-light)'
-                                            }}>
-                                                #{tag}
-                                            </span>
+                                            <span key={index} style={{ padding: '4px 10px', background: 'var(--bg-light)', borderRadius: 'var(--radius-full)', fontSize: '12px', color: 'var(--text-light)' }}>#{tag}</span>
                                         ))}
                                     </div>
                                 </div>
-
                                 <div style={{ textAlign: 'right', minWidth: '120px' }}>
-                                    <div style={{ fontSize: '12px', color: 'var(--text-light)', marginBottom: '4px' }}>
-                                        <CalendarToday fontSize="small" /> Срок:
-                                    </div>
-                                    <div style={{
-                                        fontWeight: 'bold',
-                                        fontSize: '14px',
-                                        color: isOverdue(task.dueDate, task.status) ? '#ef4444' : 'inherit'
-                                    }}>
-                                        {formatDate(task.dueDate)}
-                                    </div>
-                                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>
-                                        {task.estimatedTime}
-                                    </div>
+                                    <div style={{ fontSize: '12px', color: 'var(--text-light)', marginBottom: '4px' }}><CalendarToday fontSize="small" /> Срок:</div>
+                                    <div style={{ fontWeight: 'bold', fontSize: '14px', color: isOverdue(task.dueDate, task.status) ? '#ef4444' : 'inherit' }}>{formatDate(task.dueDate)}</div>
+                                    <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{task.estimatedTime}</div>
                                 </div>
                             </div>
 
@@ -521,24 +424,13 @@ const UserTasks = () => {
                                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <Person fontSize="small" style={{ color: '#64748b' }} />
-                                        <span style={{ fontSize: '13px', color: 'var(--text-light)' }}>
-                                            <strong>Назначил:</strong> {task.assignedBy}
-                                        </span>
+                                        <span style={{ fontSize: '13px', color: 'var(--text-light)' }}><strong>Назначил:</strong> {task.assignedBy}</span>
                                     </div>
                                     {task.assetName && (
                                         <div style={{ fontSize: '13px', color: 'var(--text-light)' }}>
                                             <strong>Актив:</strong> {task.assetName}
                                             {task.assetId && (
-                                                <a
-                                                    href={`/user/assets/${task.assetId}`}
-                                                    style={{ marginLeft: '8px', fontSize: '11px', textDecoration: 'none' }}
-                                                    onClick={(e) => {
-                                                        e.preventDefault();
-                                                        alert(`Переход к активу: ${task.assetName}`);
-                                                    }}
-                                                >
-                                                    перейти →
-                                                </a>
+                                                <a href={`/user/assets/${task.assetId}`} style={{ marginLeft: '8px', fontSize: '11px', textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); alert(`Переход к активу: ${task.assetName}`); }}>перейти →</a>
                                             )}
                                         </div>
                                     )}
@@ -547,7 +439,7 @@ const UserTasks = () => {
                                 <div style={{ display: 'flex', gap: '8px' }}>
                                     <button
                                         className="btn btn-sm btn-secondary"
-                                        onClick={() => alert(`Подробная информация о задаче: ${task.title}`)}
+                                        onClick={() => navigate(`/user/tasks/${task.id}`)}
                                         style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
                                     >
                                         <Visibility fontSize="small" /> Подробнее
@@ -556,45 +448,19 @@ const UserTasks = () => {
                                     {task.status !== 'COMPLETED' && (
                                         <>
                                             {task.status === 'PENDING' && (
-                                                <button
-                                                    className="btn btn-sm btn-primary"
-                                                    onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}
-                                                >
-                                                    Взять в работу
-                                                </button>
+                                                <button className="btn btn-sm btn-primary" onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}>Взять в работу</button>
                                             )}
                                             {task.status === 'IN_PROGRESS' && (
-                                                <button
-                                                    className="btn btn-sm btn-success"
-                                                    onClick={() => updateTaskStatus(task.id, 'COMPLETED')}
-                                                >
-                                                    Завершить
-                                                </button>
+                                                <button className="btn btn-sm btn-success" onClick={() => updateTaskStatus(task.id, 'COMPLETED')}>Завершить</button>
                                             )}
                                             {isOverdue(task.dueDate, task.status) && (
-                                                <button
-                                                    className="btn btn-sm btn-danger"
-                                                    onClick={() => {
-                                                        const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate);
-                                                        if (newDate) {
-                                                            extendTaskDueDate(task.id, newDate);
-                                                        }
-                                                    }}
-                                                >
-                                                    Продлить срок
-                                                </button>
+                                                <button className="btn btn-sm btn-danger" onClick={() => { const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate); if (newDate) extendTaskDueDate(task.id, newDate); }}>Продлить срок</button>
                                             )}
                                         </>
                                     )}
 
                                     {isAdmin && (
-                                        <button
-                                            className="btn btn-sm btn-danger"
-                                            onClick={() => deleteTask(task.id)}
-                                            style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                                        >
-                                            <Delete fontSize="small" />
-                                        </button>
+                                        <button className="btn btn-sm btn-danger" onClick={() => deleteTask(task.id)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Delete fontSize="small" /></button>
                                     )}
                                 </div>
                             </div>
@@ -605,94 +471,20 @@ const UserTasks = () => {
 
             {/* Модальное окно создания задачи */}
             {showCreateModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0, 0, 0, 0.5)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000
-                }}>
-                    <div style={{
-                        background: 'white',
-                        borderRadius: 'var(--radius-lg)',
-                        padding: '32px',
-                        width: '90%',
-                        maxWidth: '500px',
-                        maxHeight: '90vh',
-                        overflow: 'auto'
-                    }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                    <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '32px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
                         <h3 style={{ marginBottom: '24px' }}>Создание новой задачи</h3>
-
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Название задачи *</label>
-                                <input
-                                    type="text"
-                                    className="input"
-                                    value={newTask.title}
-                                    onChange={(e) => setNewTask({...newTask, title: e.target.value})}
-                                    placeholder="Введите название задачи"
-                                />
-                            </div>
-
-                            <div>
-                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Описание</label>
-                                <textarea
-                                    className="input"
-                                    rows={4}
-                                    value={newTask.description}
-                                    onChange={(e) => setNewTask({...newTask, description: e.target.value})}
-                                    placeholder="Опишите задачу подробнее"
-                                    style={{ width: '100%', resize: 'vertical' }}
-                                />
-                            </div>
-
+                            <div><label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Название задачи *</label><input type="text" className="input" value={newTask.title} onChange={(e) => setNewTask({...newTask, title: e.target.value})} placeholder="Введите название задачи" /></div>
+                            <div><label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Описание</label><textarea className="input" rows={4} value={newTask.description} onChange={(e) => setNewTask({...newTask, description: e.target.value})} placeholder="Опишите задачу подробнее" style={{ width: '100%', resize: 'vertical' }} /></div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Приоритет</label>
-                                    <select
-                                        className="input select"
-                                        value={newTask.priority}
-                                        onChange={(e) => setNewTask({...newTask, priority: e.target.value})}
-                                    >
-                                        <option value="LOW">Низкий</option>
-                                        <option value="MEDIUM">Средний</option>
-                                        <option value="HIGH">Высокий</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Срок выполнения</label>
-                                    <input
-                                        type="date"
-                                        className="input"
-                                        value={newTask.dueDate}
-                                        onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})}
-                                        min={new Date().toISOString().split('T')[0]}
-                                    />
-                                </div>
+                                <div><label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Приоритет</label><select className="input select" value={newTask.priority} onChange={(e) => setNewTask({...newTask, priority: e.target.value})}><option value="LOW">Низкий</option><option value="MEDIUM">Средний</option><option value="HIGH">Высокий</option></select></div>
+                                <div><label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Срок выполнения</label><input type="date" className="input" value={newTask.dueDate} onChange={(e) => setNewTask({...newTask, dueDate: e.target.value})} min={new Date().toISOString().split('T')[0]} /></div>
                             </div>
                         </div>
-
                         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)' }}>
-                            <button
-                                className="btn btn-secondary"
-                                onClick={() => setShowCreateModal(false)}
-                            >
-                                Отмена
-                            </button>
-                            <button
-                                className="btn btn-primary"
-                                onClick={createTask}
-                                disabled={!newTask.title.trim()}
-                            >
-                                Создать задачу
-                            </button>
+                            <button className="btn btn-secondary" onClick={() => setShowCreateModal(false)}>Отмена</button>
+                            <button className="btn btn-primary" onClick={createTask} disabled={!newTask.title.trim()}>Создать задачу</button>
                         </div>
                     </div>
                 </div>

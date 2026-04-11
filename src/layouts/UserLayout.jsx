@@ -1,7 +1,9 @@
-// src/layouts/UserLayout.jsx - ИСПРАВЛЕННАЯ ВЕРСИЯ
-import React, { useState } from 'react';
+// src/layouts/UserLayout.jsx
+import React, { useState, useEffect } from 'react';
 import { Routes, Route, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import notificationApi from '../services/notificationApi';
+import NotificationCenter from '../components/user/NotificationCenter';
 import '../styles/prototype.css';
 
 // Импортируем страницы
@@ -9,12 +11,43 @@ import UserDashboard from '../pages/User/UserDashboard';
 import MyAssets from '../pages/User/MyAssets';
 import ProfilePage from '../pages/User/ProfilePage';
 import TasksPage from '../pages/User/TasksPage';
-import AssetView from '../pages/User/AssetView'; // ИМПОРТИРУЕМ НАСТОЯЩИЙ КОМПОНЕНТ
+import AssetView from '../pages/User/AssetView';
+import TaskDetail from '../components/tasks/TaskDetail';
 
 const UserLayout = () => {
     const { user, logout } = useAuth();
     const navigate = useNavigate();
     const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+    const [showNotifications, setShowNotifications] = useState(false);
+    const [unreadCount, setUnreadCount] = useState(0);
+
+    // Polling для счётчика уведомлений
+    useEffect(() => {
+        const fetchUnreadCount = async () => {
+            try {
+                const { count } = await notificationApi.getUnreadCount();
+                setUnreadCount(count);
+            } catch (error) {
+                console.error('Failed to fetch unread count:', error);
+            }
+        };
+        fetchUnreadCount();
+        const interval = setInterval(fetchUnreadCount, 30000);
+        return () => clearInterval(interval);
+    }, []);
+
+    // Закрытие дропдауна при клике вне
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (showNotifications &&
+                !event.target.closest('.notification-dropdown') &&
+                !event.target.closest('.notification-center')) {
+                setShowNotifications(false);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [showNotifications]);
 
     const handleLogout = () => {
         logout();
@@ -58,6 +91,7 @@ const UserLayout = () => {
                             className={({ isActive }) =>
                                 `nav-link ${isActive ? 'active' : ''}`
                             }
+                            onClick={() => setShowNotifications(false)}
                         >
                             <span className="nav-icon">{item.icon}</span>
                             {!sidebarCollapsed && <span className="nav-label">{item.label}</span>}
@@ -81,10 +115,44 @@ const UserLayout = () => {
                         <span className="welcome-text">
                             Добро пожаловать, <strong>{user?.fullName}</strong>!
                         </span>
-                        <button className="notifications-btn">
-                            🔔
-                            <span className="badge">3</span>
-                        </button>
+                        <div className="notification-dropdown" style={{ position: 'relative' }}>
+                            <button
+                                className="notifications-btn"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowNotifications(!showNotifications);
+                                }}
+                                aria-label="Уведомления"
+                            >
+                                🔔
+                                {unreadCount > 0 && (
+                                    <span className="badge">{unreadCount}</span>
+                                )}
+                            </button>
+                            {showNotifications && (
+                                <div className="notification-center" style={{
+                                    position: 'absolute',
+                                    top: '100%',
+                                    right: 0,
+                                    width: '400px',
+                                    maxWidth: '90vw',
+                                    background: 'white',
+                                    borderRadius: 'var(--radius-lg)',
+                                    boxShadow: 'var(--shadow-xl)',
+                                    border: '1px solid var(--border)',
+                                    marginTop: '8px',
+                                    zIndex: 1000,
+                                }}>
+                                    <NotificationCenter
+                                        onMarkAsRead={() => {
+                                            // После отметки прочитанных обновляем счётчик
+                                            notificationApi.getUnreadCount().then(({ count }) => setUnreadCount(count));
+                                        }}
+                                        onClose={() => setShowNotifications(false)}
+                                    />
+                                </div>
+                            )}
+                        </div>
                     </div>
                 </header>
 
@@ -92,9 +160,10 @@ const UserLayout = () => {
                     <Routes>
                         <Route path="dashboard" element={<UserDashboard />} />
                         <Route path="my-assets" element={<MyAssets />} />
-                        <Route path="assets/:id" element={<AssetView />} /> {/* ИСПОЛЬЗУЕМ НАСТОЯЩИЙ КОМПОНЕНТ */}
+                        <Route path="assets/:id" element={<AssetView />} />
                         <Route path="tasks" element={<TasksPage />} />
                         <Route path="profile" element={<ProfilePage />} />
+                        <Route path="tasks/:id" element={<TaskDetail />} />
                     </Routes>
                 </main>
 
