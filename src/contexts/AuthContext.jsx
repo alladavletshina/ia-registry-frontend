@@ -61,19 +61,43 @@ export const AuthProvider = ({ children }) => {
             const data = await response.json();
             const { access_token, refresh_token } = data;
 
-            // Декодируем токен, чтобы получить информацию о пользователе
+            // Декодируем токен
             const decoded = jwtDecode(access_token);
-
-            // Извлечение ролей (зависит от настроек Keycloak)
             const realmAccess = decoded.realm_access || {};
             const roles = realmAccess.roles || [];
-            // Определяем роль: если есть 'admin' — админ, иначе обычный пользователь
-            const role = roles.includes('admin') ? 'admin' : 'user';
+            const isAdmin = roles.includes('admin');
+
+            // ========== ПРОВЕРКА СТАТУСА ПОЛЬЗОВАТЕЛЯ (active) – ТОЛЬКО ДЛЯ НЕ-АДМИНОВ ==========
+            if (!isAdmin) {
+                try {
+                    const profileResponse = await fetch(`${API_URL}/users/me`, {
+                        headers: { 'Authorization': `Bearer ${access_token}` }
+                    });
+                    if (!profileResponse.ok) {
+                        throw new Error('Не удалось получить данные пользователя');
+                    }
+                    const userProfile = await profileResponse.json();
+                    console.log('User profile from user-service:', userProfile);
+
+                    if (userProfile.active === false) {
+                        throw new Error('Ваш аккаунт неактивен. Обратитесь к администратору.');
+                    }
+                } catch (profileError) {
+                    console.error('Profile check failed:', profileError);
+                    throw profileError;
+                }
+            } else {
+                console.log('Admin login – skipping active check');
+            }
+            // =========================================================================
+
+            // Определяем роль для маршрутизации
+            const role = isAdmin ? 'admin' : 'user';
 
             const userData = {
                 username: decoded.preferred_username || username,
                 email: decoded.email || `${username}@examplecompany.com`,
-                fullName: decoded.name || (roles.includes('admin') ? 'Administrator' : 'User'),
+                fullName: decoded.name || (isAdmin ? 'Administrator' : 'User'),
                 role,
                 token: access_token,
                 refreshToken: refresh_token
@@ -88,10 +112,14 @@ export const AuthProvider = ({ children }) => {
             return { success: true, user: userData };
 
         } catch (error) {
-            console.error('❌ Keycloak login failed:', error);
+            console.error('❌ Login failed:', error);
             let errorMessage = 'Ошибка авторизации';
 
-            if (error.message.includes('401')) {
+            if (error.message.includes('неактивен')) {
+                errorMessage = error.message;
+            } else if (error.message.includes('Не удалось получить данные пользователя')) {
+                errorMessage = 'Сервис временно недоступен. Попробуйте позже.';
+            } else if (error.message.includes('401')) {
                 errorMessage = 'Неверный логин или пароль';
             } else if (error.message.includes('Network Error')) {
                 errorMessage = 'Сервер Keycloak недоступен';
@@ -99,7 +127,6 @@ export const AuthProvider = ({ children }) => {
                 errorMessage = error.message;
             }
 
-            alert(errorMessage);
             return { success: false, error: errorMessage };
         } finally {
             setLoading(false);
