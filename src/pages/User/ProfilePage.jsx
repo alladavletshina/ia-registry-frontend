@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../../contexts/AuthContext';
 import userApi from '../../services/userApi';
+import ChangePassword from '../../components/user/ChangePassword';
 import '../../styles/prototype.css';
 
 const ProfilePage = () => {
-    const { user: authUser } = useAuth(); // пользователь из контекста (JWT)
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState(null);
@@ -18,21 +17,6 @@ const ProfilePage = () => {
         phone: '',
         position: '',
         department: ''
-    });
-
-    // Настройки уведомлений и безопасности (оставляем как есть или тоже загружаем с бэка)
-    const [notificationSettings, setNotificationSettings] = useState({
-        emailNotifications: true,
-        assetUpdates: true,
-        taskReminders: true,
-        weeklyReports: false,
-        securityAlerts: true
-    });
-
-    const [securitySettings, setSecuritySettings] = useState({
-        twoFactorAuth: false,
-        sessionTimeout: 30,
-        showLastLogin: true
     });
 
     // Загрузка данных пользователя
@@ -83,20 +67,6 @@ const ProfilePage = () => {
         }
     };
 
-    const handleSaveSettings = (type) => {
-        // Здесь тоже можно отправлять на бэкенд, если есть соответствующие эндпоинты
-        alert(`Настройки ${type === 'notifications' ? 'уведомлений' : 'безопасности'} сохранены!`);
-    };
-
-    const handlePasswordChange = () => {
-        const newPassword = prompt('Введите новый пароль:');
-        if (newPassword && newPassword.length >= 6) {
-            alert('Пароль успешно изменен!');
-        } else {
-            alert('Пароль должен содержать минимум 6 символов');
-        }
-    };
-
     if (loading) {
         return (
             <div className="loading-container">
@@ -129,9 +99,6 @@ const ProfilePage = () => {
                         <div className="profile-tabs">
                             <button className={`tab-btn ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
                                 👤 Личная информация
-                            </button>
-                            <button className={`tab-btn ${activeTab === 'notifications' ? 'active' : ''}`} onClick={() => setActiveTab('notifications')}>
-                                🔔 Уведомления
                             </button>
                             <button className={`tab-btn ${activeTab === 'security' ? 'active' : ''}`} onClick={() => setActiveTab('security')}>
                                 🔐 Безопасность
@@ -184,7 +151,6 @@ const ProfilePage = () => {
                                                     type="email"
                                                     className="input"
                                                     value={profileData.email}
-                                                    onChange={(e) => setProfileData({...profileData, email: e.target.value})}
                                                     disabled={true}
                                                 />
                                             </div>
@@ -243,53 +209,9 @@ const ProfilePage = () => {
                                 </div>
                             )}
 
-                            {activeTab === 'notifications' && (
-                                <div className="notifications-tab">
-                                    <h3 className="mb-6">Настройки уведомлений</h3>
-                                    <p className="text-light mb-6">Выберите, какие уведомления вы хотите получать</p>
-                                    <div className="notifications-list">
-                                        <div className="notification-item">
-                                            <div className="notification-info">
-                                                <h4>📧 Email уведомления</h4>
-                                                <p>Получать уведомления по электронной почте</p>
-                                            </div>
-                                            <label className="switch">
-                                                <input type="checkbox" checked={notificationSettings.emailNotifications} onChange={(e) => setNotificationSettings({...notificationSettings, emailNotifications: e.target.checked})} />
-                                                <span className="slider"></span>
-                                            </label>
-                                        </div>
-                                        {/* Остальные пункты уведомлений */}
-                                    </div>
-                                    <div className="form-actions mt-8">
-                                        <button className="btn btn-primary" onClick={() => handleSaveSettings('notifications')}>Сохранить настройки уведомлений</button>
-                                    </div>
-                                </div>
-                            )}
-
                             {activeTab === 'security' && (
                                 <div className="security-tab">
-                                    <h3 className="mb-6">Настройки безопасности</h3>
-                                    <div className="security-settings">
-                                        <div className="security-item">
-                                            <div className="security-info">
-                                                <h4>🔐 Двухфакторная аутентификация</h4>
-                                                <p>Дополнительная защита вашего аккаунта</p>
-                                            </div>
-                                            <label className="switch">
-                                                <input type="checkbox" checked={securitySettings.twoFactorAuth} onChange={(e) => setSecuritySettings({...securitySettings, twoFactorAuth: e.target.checked})} />
-                                                <span className="slider"></span>
-                                            </label>
-                                        </div>
-                                        {/* Остальные настройки безопасности */}
-                                    </div>
-                                    <div className="password-section mt-8">
-                                        <h4 className="mb-4">Смена пароля</h4>
-                                        <button className="btn btn-warning" onClick={handlePasswordChange}>🔑 Изменить пароль</button>
-                                        <p className="text-light mt-2">Рекомендуется менять пароль каждые 90 дней</p>
-                                    </div>
-                                    <div className="form-actions mt-8">
-                                        <button className="btn btn-primary" onClick={() => handleSaveSettings('security')}>Сохранить настройки безопасности</button>
-                                    </div>
+                                    <ChangePassword />
                                 </div>
                             )}
                         </div>

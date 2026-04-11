@@ -139,6 +139,16 @@ export const updateCurrentUser = async (userData) => {
     }
 };
 
+export const changePassword = async (oldPassword, newPassword) => {
+    try {
+        const response = await userApi.post('/change-password', { oldPassword, newPassword });
+        return response.data;
+    } catch (error) {
+        console.error('Ошибка смены пароля:', error);
+        throw error;
+    }
+};
+
 export default {
     getAll: getAllUsers,
     getById: getUserById,
@@ -148,4 +158,5 @@ export default {
     getCurrentUser,
     exportToCsv: exportUsersToCsv,
     updateCurrentUser,
+    changePassword,
 };
