@@ -9,7 +9,7 @@ import '../../styles/prototype.css';
 const AuditLogPage = () => {
     const [auditLogs, setAuditLogs] = useState([]);
     const [totalCount, setTotalCount] = useState(0);
-    const [loading, setLoading] = useState(true);
+    const [loading, setLoading] = useState(false);
     const [stats, setStats] = useState({
         total: 0,
         info: 0,
@@ -17,16 +17,23 @@ const AuditLogPage = () => {
         danger: 0,
         success: 0,
     });
+
+    // Фильтры (без пагинации)
     const [filters, setFilters] = useState({
         dateRange: 'all',
         actionType: 'all',
+        severity: 'all',
         userId: '',
         searchTerm: '',
-        page: 0,
-        pageSize: 10,
     });
 
-    // Функция преобразования dateRange в startDate/endDate
+    // Пагинация (отдельно)
+    const [paginationModel, setPaginationModel] = useState({
+        page: 0,
+        pageSize: 25,
+    });
+
+    // Преобразование dateRange в startDate/endDate
     const getDateParams = useCallback((range) => {
         const now = new Date();
         let startDate, endDate;
@@ -54,17 +61,19 @@ const AuditLogPage = () => {
         return { startDate, endDate };
     }, []);
 
-    // Загрузка данных аудита
+    // Загрузка записей аудита (с фильтрами и пагинацией)
     const loadAuditLogs = useCallback(async () => {
         setLoading(true);
         try {
             const params = {
-                page: filters.page,
-                size: filters.pageSize,
+                page: paginationModel.page,
+                size: paginationModel.pageSize,
                 search: filters.searchTerm || undefined,
                 action: filters.actionType !== 'all' ? filters.actionType : undefined,
+                severity: filters.severity !== 'all' ? filters.severity : undefined,
                 ...getDateParams(filters.dateRange),
             };
+            console.log('📡 Запрос аудита:', params);
             const response = await auditApi.getLogs(params);
             setAuditLogs(response.content || []);
             setTotalCount(response.totalElements || 0);
@@ -73,9 +82,9 @@ const AuditLogPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [filters, getDateParams]);
+    }, [filters, paginationModel, getDateParams]);
 
-    // Загрузка статистики
+    // Загрузка статистики (только по дате)
     const loadStats = useCallback(async () => {
         try {
             const params = getDateParams(filters.dateRange);
@@ -86,17 +95,23 @@ const AuditLogPage = () => {
         }
     }, [filters.dateRange, getDateParams]);
 
+    // Перезагрузка при изменении фильтров или пагинации
     useEffect(() => {
         loadAuditLogs();
-        loadStats();
-    }, [loadAuditLogs, loadStats]);
+    }, [loadAuditLogs]);
 
-    // Экспорт в CSV
+    // Перезагрузка статистики при изменении периода
+    useEffect(() => {
+        loadStats();
+    }, [loadStats]);
+
+    // Экспорт в CSV (без пагинации, но с учётом фильтров)
     const exportToCSV = async () => {
         try {
             const params = {
                 search: filters.searchTerm || undefined,
                 action: filters.actionType !== 'all' ? filters.actionType : undefined,
+                severity: filters.severity !== 'all' ? filters.severity : undefined,
                 ...getDateParams(filters.dateRange),
             };
             const blob = await auditApi.export(params);
@@ -112,28 +127,24 @@ const AuditLogPage = () => {
         }
     };
 
-    // Обработчики пагинации
-    const handlePageChange = (newPage) => {
-        setFilters(prev => ({ ...prev, page: newPage }));
+    // Обработчик смены страницы/размера
+    const handlePaginationModelChange = (newModel) => {
+        setPaginationModel(newModel);
     };
 
-    const handlePageSizeChange = (newPageSize) => {
-        setFilters(prev => ({ ...prev, pageSize: newPageSize, page: 0 }));
-    };
-
-    // Сброс фильтров
+    // Сброс всех фильтров (пагинация сбрасывается на первую страницу)
     const clearFilters = () => {
         setFilters({
             dateRange: 'all',
             actionType: 'all',
+            severity: 'all',
             userId: '',
             searchTerm: '',
-            page: 0,
-            pageSize: 10,
         });
+        setPaginationModel(prev => ({ ...prev, page: 0 }));
     };
 
-    // Цвета для severity
+    // Вспомогательные функции для отображения
     const getSeverityColor = (severity) => {
         const colors = {
             info: 'primary',
@@ -144,26 +155,22 @@ const AuditLogPage = () => {
         return colors[severity] || 'default';
     };
 
-    // Человеко-читаемые названия действий
     const getActionLabel = (action) => {
         const labels = {
-            'ASSET_CREATE': 'Создание актива',
-            'ASSET_UPDATE': 'Изменение актива',
-            'ASSET_DELETE': 'Удаление актива',
-            'USER_CREATE': 'Создание пользователя',
+            'CREATE_ASSET': 'Создание актива',
+            'UPDATE_ASSET': 'Изменение актива',
+            'DELETE_ASSET': 'Удаление актива',
+            'USER_REGISTER': 'Регистрация пользователя',
             'USER_UPDATE': 'Изменение пользователя',
-            'LOGIN': 'Вход в систему',
-            'LOGOUT': 'Выход из системы',
-            'REPORT_GENERATE': 'Генерация отчета',
-            'PERMISSION_CHANGE': 'Изменение прав',
-            'DATA_EXPORT': 'Экспорт данных',
-            'SETTINGS_UPDATE': 'Изменение настроек',
-            'PASSWORD_CHANGE': 'Смена пароля'
+            'PASSWORD_CHANGE': 'Смена пароля',
+            'TASK_CREATE': 'Создание задачи',
+            'TASK_UPDATE': 'Изменение задачи',
+            'TASK_DELETE': 'Удаление задачи',
+            'TASK_UPDATE_FIELDS': 'Обновление полей задачи'
         };
         return labels[action] || action;
     };
 
-    // Просмотр деталей записи
     const viewDetails = (log) => {
         alert(`Детали события:\n\n` +
             `ID: ${log.id}\n` +
@@ -175,31 +182,9 @@ const AuditLogPage = () => {
             `Уровень важности: ${log.severity}`);
     };
 
-    // Колонки для DataGrid
     const columns = [
-        {
-            field: 'timestamp',
-            headerName: 'Время',
-            width: 160,
-            renderCell: (params) => (
-                <div style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                    {params.value}
-                </div>
-            )
-        },
-        {
-            field: 'user',
-            headerName: 'Пользователь',
-            width: 120,
-            renderCell: (params) => (
-                <Chip
-                    label={params.value}
-                    size="small"
-                    color="primary"
-                    variant="outlined"
-                />
-            )
-        },
+        { field: 'timestamp', headerName: 'Время', width: 160 },
+        { field: 'user', headerName: 'Пользователь', width: 120 },
         {
             field: 'action',
             headerName: 'Действие',
@@ -218,11 +203,7 @@ const AuditLogPage = () => {
             width: 300,
             renderCell: (params) => (
                 <Tooltip title={params.value}>
-                    <span style={{
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                    }}>
+                    <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {params.value}
                     </span>
                 </Tooltip>
@@ -234,10 +215,7 @@ const AuditLogPage = () => {
             headerName: 'Действия',
             width: 100,
             renderCell: (params) => (
-                <IconButton
-                    size="small"
-                    onClick={() => viewDetails(params.row)}
-                >
+                <IconButton size="small" onClick={() => viewDetails(params.row)}>
                     <Visibility fontSize="small" />
                 </IconButton>
             )
@@ -272,7 +250,10 @@ const AuditLogPage = () => {
                                 <select
                                     className="input select"
                                     value={filters.dateRange}
-                                    onChange={(e) => setFilters({...filters, dateRange: e.target.value, page: 0})}
+                                    onChange={(e) => {
+                                        setFilters({ ...filters, dateRange: e.target.value });
+                                        setPaginationModel(prev => ({ ...prev, page: 0 }));
+                                    }}
                                 >
                                     <option value="all">Все время</option>
                                     <option value="today">Сегодня</option>
@@ -286,15 +267,39 @@ const AuditLogPage = () => {
                                 <select
                                     className="input select"
                                     value={filters.actionType}
-                                    onChange={(e) => setFilters({...filters, actionType: e.target.value, page: 0})}
+                                    onChange={(e) => {
+                                        setFilters({ ...filters, actionType: e.target.value });
+                                        setPaginationModel(prev => ({ ...prev, page: 0 }));
+                                    }}
                                 >
                                     <option value="all">Все действия</option>
-                                    <option value="ASSET_CREATE">Создание активов</option>
-                                    <option value="ASSET_UPDATE">Изменение активов</option>
-                                    <option value="ASSET_DELETE">Удаление активов</option>
-                                    <option value="USER_CREATE">Создание пользователей</option>
-                                    <option value="LOGIN">Входы в систему</option>
-                                    <option value="REPORT_GENERATE">Генерация отчетов</option>
+                                    <option value="CREATE_ASSET">Создание активов</option>
+                                    <option value="UPDATE_ASSET">Изменение активов</option>
+                                    <option value="DELETE_ASSET">Удаление активов</option>
+                                    <option value="USER_REGISTER">Регистрация пользователей</option>
+                                    <option value="USER_UPDATE">Изменение пользователей</option>
+                                    <option value="PASSWORD_CHANGE">Смена пароля</option>
+                                    <option value="TASK_CREATE">Создание задач</option>
+                                    <option value="TASK_UPDATE">Изменение задач</option>
+                                    <option value="TASK_DELETE">Удаление задач</option>
+                                </select>
+                            </div>
+
+                            <div className="filter-group">
+                                <label>Уровень опасности</label>
+                                <select
+                                    className="input select"
+                                    value={filters.severity}
+                                    onChange={(e) => {
+                                        setFilters({ ...filters, severity: e.target.value });
+                                        setPaginationModel(prev => ({ ...prev, page: 0 }));
+                                    }}
+                                >
+                                    <option value="all">Все уровни</option>
+                                    <option value="INFO">Информация</option>
+                                    <option value="WARNING">Предупреждение</option>
+                                    <option value="DANGER">Опасность</option>
+                                    <option value="SUCCESS">Успех</option>
                                 </select>
                             </div>
 
@@ -306,7 +311,10 @@ const AuditLogPage = () => {
                                         className="input"
                                         placeholder="Поиск по логам..."
                                         value={filters.searchTerm}
-                                        onChange={(e) => setFilters({...filters, searchTerm: e.target.value, page: 0})}
+                                        onChange={(e) => {
+                                            setFilters({ ...filters, searchTerm: e.target.value });
+                                            setPaginationModel(prev => ({ ...prev, page: 0 }));
+                                        }}
                                     />
                                     <Search style={{
                                         position: 'absolute',
@@ -319,11 +327,7 @@ const AuditLogPage = () => {
                             </div>
 
                             <div className="filter-group" style={{ alignSelf: 'end' }}>
-                                <button
-                                    className="btn btn-secondary"
-                                    onClick={clearFilters}
-                                    style={{ width: '100%' }}
-                                >
+                                <button className="btn btn-secondary" onClick={clearFilters} style={{ width: '100%' }}>
                                     <FilterList /> Сбросить фильтры
                                 </button>
                             </div>
@@ -335,30 +339,15 @@ const AuditLogPage = () => {
                             marginBottom: '20px',
                             flexWrap: 'wrap'
                         }}>
-                            <div className="stat-badge" style={{
-                                padding: '8px 16px',
-                                background: 'var(--primary-50)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--primary-100)'
-                            }}>
+                            <div className="stat-badge" style={{ padding: '8px 16px', background: 'var(--primary-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--primary-100)' }}>
                                 <span style={{ fontSize: '12px', color: 'var(--primary-700)' }}>Всего записей:</span>
                                 <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{stats.total}</strong>
                             </div>
-                            <div className="stat-badge" style={{
-                                padding: '8px 16px',
-                                background: 'var(--warning-50)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--warning-100)'
-                            }}>
+                            <div className="stat-badge" style={{ padding: '8px 16px', background: 'var(--warning-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--warning-100)' }}>
                                 <span style={{ fontSize: '12px', color: 'var(--warning-700)' }}>Предупреждений:</span>
                                 <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{stats.warning}</strong>
                             </div>
-                            <div className="stat-badge" style={{
-                                padding: '8px 16px',
-                                background: 'var(--danger-50)',
-                                borderRadius: 'var(--radius-md)',
-                                border: '1px solid var(--danger-100)'
-                            }}>
+                            <div className="stat-badge" style={{ padding: '8px 16px', background: 'var(--danger-50)', borderRadius: 'var(--radius-md)', border: '1px solid var(--danger-100)' }}>
                                 <span style={{ fontSize: '12px', color: 'var(--danger-700)' }}>Опасных действий:</span>
                                 <strong style={{ marginLeft: '8px', fontSize: '16px' }}>{stats.danger}</strong>
                             </div>
@@ -371,13 +360,11 @@ const AuditLogPage = () => {
                                 loading={loading}
                                 paginationMode="server"
                                 rowCount={totalCount}
-                                page={filters.page}
-                                pageSize={filters.pageSize}
-                                onPageChange={handlePageChange}
-                                onPageSizeChange={handlePageSizeChange}
-                                rowsPerPageOptions={[10, 25, 50]}
+                                paginationModel={paginationModel}
+                                onPaginationModelChange={handlePaginationModelChange}
+                                pageSizeOptions={[25, 50, 100]}
                                 checkboxSelection
-                                disableSelectionOnClick
+                                disableRowSelectionOnClick
                             />
                         </div>
 
