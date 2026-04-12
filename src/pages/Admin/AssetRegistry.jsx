@@ -87,7 +87,7 @@ const AssetRegistry = () => {
         tags: asset.tags,
         value: asset.value,
         legalStatus: asset.legalStatus,
-        groupId: asset.group ? asset.group.id : null
+        groupId: asset.groupId
     });
 
     const columns = [
