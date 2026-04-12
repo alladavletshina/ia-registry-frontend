@@ -1,4 +1,3 @@
-// src/pages/Admin/UserManagement.jsx (ОБНОВЛЕННАЯ ВЕРСИЯ)
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DataGrid } from '@mui/x-data-grid';
@@ -7,23 +6,16 @@ import {
     Button,
     Chip,
     TextField,
-    Dialog,
-    DialogTitle,
-    DialogContent,
-    DialogActions,
     MenuItem,
     Select,
     FormControl,
     InputLabel
 } from '@mui/material';
 import {
-    Delete,
-    Edit,
     Visibility,
     FilterList,
     Download,
-    Search,
-    Add
+    Search
 } from '@mui/icons-material';
 import userApi from '../../services/userApi';
 import '../../styles/prototype.css';
@@ -34,20 +26,11 @@ const UserManagement = () => {
     const [loading, setLoading] = useState(true);
     const navigate = useNavigate();
     const [selectedUsers, setSelectedUsers] = useState([]);
-    const [showCreateModal, setShowCreateModal] = useState(false);
     const [filters, setFilters] = useState({
         role: 'all',
         department: 'all',
         search: '',
         isActive: 'all'
-    });
-    const [newUser, setNewUser] = useState({
-        username: '',
-        fullName: '',
-        email: '',
-        role: 'user',
-        department: '',
-        isActive: true
     });
 
     useEffect(() => {
@@ -61,13 +44,13 @@ const UserManagement = () => {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const data = await userApi.getAll(); // массив объектов с сервера
+            const data = await userApi.getAll();
             const mappedUsers = data.map(user => ({
                 id: user.id,
                 fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim(),
                 email: user.email,
                 department: user.department || '',
-                role: user.role || 'user',
+                role: (user.role || 'user').toLowerCase(),
                 isActive: user.active === true,
                 lastLogin: user.updatedAt ? new Date(user.updatedAt).toLocaleDateString() : null
             }));
@@ -85,12 +68,10 @@ const UserManagement = () => {
 
         if (filters.search) {
             const searchTerm = filters.search.toLowerCase();
-            filtered = filtered.filter(user => {
-                const fullName = user.fullName || '';
-                const email = user.email || '';
-                return fullName.toLowerCase().includes(searchTerm) ||
-                    email.toLowerCase().includes(searchTerm);
-            });
+            filtered = filtered.filter(user =>
+                (user.fullName?.toLowerCase().includes(searchTerm)) ||
+                (user.email?.toLowerCase().includes(searchTerm))
+            );
         }
 
         if (filters.role !== 'all') {
@@ -121,27 +102,6 @@ const UserManagement = () => {
         }
     };
 
-    const handleCreateUser = async () => {
-        try {
-            const createdUser = await userApi.create(newUser);
-
-            setUsers([...users, { ...createdUser, isActive: createdUser.active ?? true }]);
-            setShowCreateModal(false);
-            setNewUser({
-                username: '',
-                fullName: '',
-                email: '',
-                role: 'user',
-                department: '',
-                isActive: true
-            });
-            alert('Пользователь успешно создан!');
-        } catch (error) {
-            console.error('Ошибка создания пользователя:', error);
-            alert('Ошибка при создании пользователя');
-        }
-    };
-
     const handleBulkAction = (action) => {
         if (selectedUsers.length === 0) {
             alert('Выберите пользователей для выполнения действия');
@@ -154,6 +114,7 @@ const UserManagement = () => {
                     setUsers(users.map(user =>
                         selectedUsers.includes(user.id) ? { ...user, isActive: true } : user
                     ));
+                    setSelectedUsers([]);
                 }
                 break;
             case 'deactivate':
@@ -161,6 +122,7 @@ const UserManagement = () => {
                     setUsers(users.map(user =>
                         selectedUsers.includes(user.id) ? { ...user, isActive: false } : user
                     ));
+                    setSelectedUsers([]);
                 }
                 break;
             case 'delete':
@@ -174,10 +136,7 @@ const UserManagement = () => {
 
     const exportToCSV = async () => {
         try {
-            // Вызываем API для получения CSV-файла
-            const blob = await userApi.exportToCsv(); // если вы экспортировали как метод объекта
-
-            // Создаём ссылку для скачивания
+            const blob = await userApi.exportToCsv();
             const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
@@ -193,26 +152,10 @@ const UserManagement = () => {
     };
 
     const columns = [
-        {
-            field: 'id',
-            headerName: 'ID',
-            width: 70
-        },
-        {
-            field: 'fullName',
-            headerName: 'ФИО',
-            width: 200
-        },
-        {
-            field: 'email',
-            headerName: 'Email',
-            width: 200
-        },
-        {
-            field: 'department',
-            headerName: 'Подразделение',
-            width: 150
-        },
+        { field: 'id', headerName: 'ID', width: 70 },
+        { field: 'fullName', headerName: 'ФИО', width: 200 },
+        { field: 'email', headerName: 'Email', width: 200 },
+        { field: 'department', headerName: 'Подразделение', width: 150 },
         {
             field: 'role',
             headerName: 'Роль',
@@ -238,8 +181,8 @@ const UserManagement = () => {
                         size="small"
                     />
                     <span style={{ fontSize: '12px' }}>
-            {params.value ? 'Активен' : 'Неактивен'}
-          </span>
+                        {params.value ? 'Активен' : 'Неактивен'}
+                    </span>
                 </div>
             )
         },
@@ -249,8 +192,8 @@ const UserManagement = () => {
             width: 150,
             renderCell: (params) => (
                 <span style={{ fontSize: '12px', color: '#64748b' }}>
-          {params.value || 'Никогда'}
-        </span>
+                    {params.value || 'Никогда'}
+                </span>
             )
         },
         {
@@ -273,9 +216,54 @@ const UserManagement = () => {
         <div className="user-management">
             <div className="content-header">
                 <h1>Управление пользователями</h1>
+                <div className="header-actions">
+                    <Button variant="outlined" startIcon={<Download />} onClick={exportToCSV}>
+                        Экспорт в CSV
+                    </Button>
+                </div>
             </div>
 
             <div className="main-content">
+                {/* Карточки статистики */}
+                <div className="stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+                    <div className="stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <h4>Всего пользователей</h4>
+                                <p className="number" style={{ fontSize: '28px', margin: '8px 0' }}>{users.length}</p>
+                            </div>
+                            <span style={{ fontSize: '32px' }}></span>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <h4>Активных</h4>
+                                <p className="number" style={{ fontSize: '28px', margin: '8px 0', color: '#10b981' }}>{users.filter(u => u.isActive).length}</p>
+                            </div>
+                            <span style={{ fontSize: '32px' }}></span>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <h4>Администраторов</h4>
+                                <p className="number" style={{ fontSize: '28px', margin: '8px 0', color: '#3b82f6' }}>{users.filter(u => u.role === 'admin').length}</p>
+                            </div>
+                            <span style={{ fontSize: '32px' }}></span>
+                        </div>
+                    </div>
+                    <div className="stat-card">
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <div>
+                                <h4>Заблокированных</h4>
+                                <p className="number" style={{ fontSize: '28px', margin: '8px 0', color: '#ef4444' }}>{users.filter(u => !u.isActive).length}</p>
+                            </div>
+                            <span style={{ fontSize: '32px' }}></span>
+                        </div>
+                    </div>
+                </div>
+
                 <div className="card">
                     <div className="card-header">
                         <div className="filters" style={{
@@ -333,6 +321,19 @@ const UserManagement = () => {
                                     <MenuItem value="inactive">Неактивные</MenuItem>
                                 </Select>
                             </FormControl>
+
+                            <Button
+                                variant="outlined"
+                                startIcon={<FilterList />}
+                                onClick={() => setFilters({
+                                    role: 'all',
+                                    department: 'all',
+                                    search: '',
+                                    isActive: 'all'
+                                })}
+                            >
+                                Сбросить
+                            </Button>
                         </div>
                     </div>
 
@@ -349,66 +350,15 @@ const UserManagement = () => {
                                 justifyContent: 'space-between',
                                 alignItems: 'center'
                             }}>
-                <span>
-                  Выбрано <strong>{selectedUsers.length}</strong> пользователей
-                </span>
+                                <span>Выбрано <strong>{selectedUsers.length}</strong> пользователей</span>
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={() => handleBulkAction('activate')}
-                                    >
-                                        Активировать
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        onClick={() => handleBulkAction('deactivate')}
-                                    >
-                                        Деактивировать
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        variant="outlined"
-                                        color="error"
-                                        onClick={() => handleBulkAction('delete')}
-                                    >
-                                        Удалить
-                                    </Button>
-                                    <Button
-                                        size="small"
-                                        onClick={() => setSelectedUsers([])}
-                                    >
-                                        Снять выделение
-                                    </Button>
+                                    <Button size="small" variant="outlined" onClick={() => handleBulkAction('activate')}>Активировать</Button>
+                                    <Button size="small" variant="outlined" onClick={() => handleBulkAction('deactivate')}>Деактивировать</Button>
+                                    <Button size="small" variant="outlined" color="error" onClick={() => handleBulkAction('delete')}>Удалить</Button>
+                                    <Button size="small" onClick={() => setSelectedUsers([])}>Снять выделение</Button>
                                 </div>
                             </div>
                         )}
-
-                        {/* Кнопки экспорта */}
-                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginBottom: '16px' }}>
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<Download />}
-                                onClick={exportToCSV}
-                            >
-                                Экспорт в CSV
-                            </Button>
-                            <Button
-                                size="small"
-                                variant="outlined"
-                                startIcon={<FilterList />}
-                                onClick={() => setFilters({
-                                    role: 'all',
-                                    department: 'all',
-                                    search: '',
-                                    isActive: 'all'
-                                })}
-                            >
-                                Сбросить фильтры
-                            </Button>
-                        </div>
 
                         {/* Таблица пользователей */}
                         <div style={{ height: 500, width: '100%' }}>
@@ -420,103 +370,13 @@ const UserManagement = () => {
                                 rowsPerPageOptions={[10, 25, 50]}
                                 checkboxSelection
                                 disableSelectionOnClick
-                                onSelectionModelChange={(newSelection) => {
-                                    setSelectedUsers(newSelection);
-                                }}
+                                onSelectionModelChange={(newSelection) => setSelectedUsers(newSelection)}
                                 selectionModel={selectedUsers}
                             />
-                        </div>
-
-                        {/* Статистика */}
-                        <div className="user-stats mt-6" style={{
-                            display: 'grid',
-                            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-                            gap: '16px'
-                        }}>
-                            <div className="stat-card">
-                                <h4>Всего пользователей</h4>
-                                <p className="number">{users.length}</p>
-                            </div>
-                            <div className="stat-card">
-                                <h4>Активных</h4>
-                                <p className="number">{users.filter(u => u.isActive).length}</p>
-                            </div>
-                            <div className="stat-card">
-                                <h4>Администраторов</h4>
-                                <p className="number">{users.filter(u => u.role === 'admin').length}</p>
-                            </div>
-                            <div className="stat-card">
-                                <h4>Заблокированных</h4>
-                                <p className="number">{users.filter(u => !u.isActive).length}</p>
-                            </div>
                         </div>
                     </div>
                 </div>
             </div>
-
-            {/* Модальное окно создания пользователя */}
-            <Dialog
-                open={showCreateModal}
-                onClose={() => setShowCreateModal(false)}
-                maxWidth="sm"
-                fullWidth
-            >
-                <DialogTitle>Добавить нового пользователя</DialogTitle>
-                <DialogContent>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingTop: '16px' }}>
-                        <TextField
-                            label="Логин"
-                            value={newUser.username}
-                            onChange={(e) => setNewUser({...newUser, username: e.target.value})}
-                            fullWidth
-                            required
-                        />
-                        <TextField
-                            label="ФИО"
-                            value={newUser.fullName}
-                            onChange={(e) => setNewUser({...newUser, fullName: e.target.value})}
-                            fullWidth
-                            required
-                        />
-                        <TextField
-                            label="Email"
-                            type="email"
-                            value={newUser.email}
-                            onChange={(e) => setNewUser({...newUser, email: e.target.value})}
-                            fullWidth
-                            required
-                        />
-                        <FormControl fullWidth>
-                            <InputLabel>Роль</InputLabel>
-                            <Select
-                                value={newUser.role}
-                                label="Роль"
-                                onChange={(e) => setNewUser({...newUser, role: e.target.value})}
-                            >
-                                <MenuItem value="user">Пользователь</MenuItem>
-                                <MenuItem value="admin">Администратор</MenuItem>
-                                <MenuItem value="auditor">Аудитор</MenuItem>
-                            </Select>
-                        </FormControl>
-                        <TextField
-                            label="Подразделение"
-                            value={newUser.department}
-                            onChange={(e) => setNewUser({...newUser, department: e.target.value})}
-                            fullWidth
-                        />
-                    </div>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setShowCreateModal(false)}>Отмена</Button>
-                    <Button
-                        onClick={handleCreateUser}
-                        variant="contained"
-                        disabled={!newUser.username || !newUser.fullName || !newUser.email}
-                    >
-                        Создать
-                    </Button>
-                </DialogActions>
-            </Dialog>
         </div>
     );
 };
