@@ -147,6 +147,10 @@ export const updateTaskFields = async (id, fields) => {
     }
 };
 
+export const getStatsByUser = (userId) => {
+    return taskApi.get('/stats/by-user', { params: { userId } }).then(res => res.data);
+};
+
 const taskApiObject = {
     getAll: getAllTasks,
     getById: getTaskById,
@@ -156,6 +160,7 @@ const taskApiObject = {
     delete: deleteTask,
     getStats: getTaskStats,
     updateTaskFields,
+    getStatsByUser,
 };
 
 export default taskApiObject;

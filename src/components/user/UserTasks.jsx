@@ -23,7 +23,7 @@ const UserTasks = () => {
     const navigate = useNavigate();
     const { user } = useAuth();
     const [internalUserId, setInternalUserId] = useState(null);
-    const [profileError, setProfileError] = useState(false);
+    const [loadingProfile, setLoadingProfile] = useState(true);
     const [tasks, setTasks] = useState([]);
     const [filter, setFilter] = useState('all');
     const [search, setSearch] = useState('');
@@ -44,20 +44,57 @@ const UserTasks = () => {
         assetId: null
     });
 
-    // Загрузка профиля пользователя
+    // Получаем внутренний ID пользователя
     useEffect(() => {
-        const fetchUserProfile = async () => {
+        const fetchInternalId = async () => {
             try {
                 const profile = await userApi.getCurrentUser();
                 setInternalUserId(profile.id);
-                setProfileError(false);
-            } catch (error) {
-                console.error('Не удалось загрузить профиль пользователя', error);
-                setProfileError(true);
+            } catch (err) {
+                console.error('Failed to get internal user id', err);
+            } finally {
+                setLoadingProfile(false);
             }
         };
-        fetchUserProfile();
+        fetchInternalId();
     }, []);
+
+    const loadTasks = useCallback(async () => {
+        if (!internalUserId) return;
+        setLoading(true);
+        try {
+            const params = {};
+            params.userId = internalUserId;
+            if (search) params.search = search;
+            const cleanParams = Object.fromEntries(
+                Object.entries(params).filter(([_, v]) => v != null && v !== '')
+            );
+            const data = await taskApi.getAll(cleanParams);
+            setTasks(data);
+        } catch (error) {
+            console.error('Ошибка загрузки задач:', error);
+            alert('Не удалось загрузить задачи');
+        } finally {
+            setLoading(false);
+        }
+    }, [search, internalUserId]);
+
+    const loadStats = useCallback(async () => {
+        if (!internalUserId) return;
+        try {
+            const data = await taskApi.getStatsByUser(internalUserId);
+            setStats(data);
+        } catch (error) {
+            console.error('Ошибка загрузки статистики:', error);
+        }
+    }, [internalUserId]);
+
+    useEffect(() => {
+        if (internalUserId) {
+            loadTasks();
+            loadStats();
+        }
+    }, [internalUserId, loadTasks, loadStats]);
 
     const extendTaskDueDate = async (taskId, newDueDate) => {
         try {
@@ -70,42 +107,6 @@ const UserTasks = () => {
             alert('Не удалось продлить срок');
         }
     };
-
-    const loadTasks = useCallback(async () => {
-        setLoading(true);
-        try {
-            const params = {};
-            if (internalUserId) params.userId = internalUserId;
-            if (search) params.search = search;
-            const cleanParams = Object.fromEntries(
-                Object.entries(params).filter(([_, v]) => v != null && v !== '')
-            );
-            console.log('Параметры запроса задач:', cleanParams);
-            const data = await taskApi.getAll(cleanParams);
-            setTasks(data);
-        } catch (error) {
-            console.error('Ошибка загрузки задач:', error);
-            alert('Не удалось загрузить задачи');
-        } finally {
-            setLoading(false);
-        }
-    }, [search, internalUserId]);
-
-    const loadStats = useCallback(async () => {
-        try {
-            const data = await taskApi.getStats();
-            setStats(data);
-        } catch (error) {
-            console.error('Ошибка загрузки статистики:', error);
-        }
-    }, []);
-
-    useEffect(() => {
-        if (internalUserId) {
-            loadTasks();
-            loadStats();
-        }
-    }, [loadTasks, loadStats, internalUserId]);
 
     const filteredTasks = tasks.filter(task => {
         if (filter !== 'all') {
@@ -256,21 +257,11 @@ const UserTasks = () => {
         return due < today;
     };
 
-    if (loading && !internalUserId && !profileError) {
+    if (loadingProfile || (loading && !internalUserId)) {
         return (
             <div className="loading-container">
                 <div className="loading-spinner"></div>
                 <p>Загрузка задач...</p>
-            </div>
-        );
-    }
-
-    if (profileError) {
-        return (
-            <div className="empty-state">
-                <Warning style={{ fontSize: 48, color: '#ef4444' }} />
-                <h4>Ошибка загрузки профиля</h4>
-                <p>Не удалось получить информацию о пользователе. Попробуйте обновить страницу.</p>
             </div>
         );
     }
@@ -287,50 +278,29 @@ const UserTasks = () => {
                 marginBottom: '24px'
             }}>
                 <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div><h4>Всего задач</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0' }}>{stats.total}</p></div>
-                        <Assignment style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
-                    </div>
+                    <div><h4>Всего задач</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0' }}>{stats.total}</p></div>
+                    <Assignment style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
                 </div>
                 <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div><h4>В работе</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#3b82f6' }}>{stats.inProgress}</p></div>
-                        <HourglassEmpty style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
-                    </div>
+                    <div><h4>В работе</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#3b82f6' }}>{stats.inProgress}</p></div>
+                    <HourglassEmpty style={{ fontSize: '32px', color: '#3b82f6', opacity: 0.7 }} />
                 </div>
                 <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div><h4>Выполнено</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#10b981' }}>{stats.completed}</p></div>
-                        <CheckCircle style={{ fontSize: '32px', color: '#10b981', opacity: 0.7 }} />
-                    </div>
+                    <div><h4>Выполнено</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#10b981' }}>{stats.completed}</p></div>
+                    <CheckCircle style={{ fontSize: '32px', color: '#10b981', opacity: 0.7 }} />
                 </div>
                 <div className="stat-card">
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                        <div><h4>Просрочено</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#ef4444' }}>{stats.overdue}</p></div>
-                        <Warning style={{ fontSize: '32px', color: '#ef4444', opacity: 0.7 }} />
-                    </div>
+                    <div><h4>Просрочено</h4><p className="number" style={{ fontSize: '32px', margin: '8px 0', color: '#ef4444' }}>{stats.overdue}</p></div>
+                    <Warning style={{ fontSize: '32px', color: '#ef4444', opacity: 0.7 }} />
                 </div>
             </div>
 
             {/* Панель управления */}
-            <div className="control-panel" style={{
-                background: 'white',
-                padding: '20px',
-                borderRadius: 'var(--radius-lg)',
-                marginBottom: '24px',
-                border: '1px solid var(--border)'
-            }}>
+            <div className="control-panel" style={{ background: 'white', padding: '20px', borderRadius: 'var(--radius-lg)', marginBottom: '24px', border: '1px solid var(--border)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                     <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
                         <div style={{ position: 'relative' }}>
-                            <input
-                                type="text"
-                                placeholder="Поиск задач..."
-                                className="input"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                style={{ width: '250px', paddingLeft: '40px' }}
-                            />
+                            <input type="text" placeholder="Поиск задач..." className="input" value={search} onChange={(e) => setSearch(e.target.value)} style={{ width: '250px', paddingLeft: '40px' }} />
                             <FilterList style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} />
                         </div>
                         <select className="input select" value={filter} onChange={(e) => setFilter(e.target.value)} style={{ width: '150px' }}>
@@ -342,13 +312,9 @@ const UserTasks = () => {
                         </select>
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
-                        <button className="btn btn-secondary" onClick={exportTasks} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <Download /> Экспорт
-                        </button>
+                        <button className="btn btn-secondary" onClick={exportTasks} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Download /> Экспорт</button>
                         {isAdmin && (
-                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <Add /> Новая задача
-                            </button>
+                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Add /> Новая задача</button>
                         )}
                     </div>
                 </div>
@@ -360,38 +326,21 @@ const UserTasks = () => {
                     <div className="empty-state" style={{ textAlign: 'center', padding: '60px 20px', background: 'var(--bg-light)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
                         <Assignment style={{ fontSize: 48, color: '#94a3b8', marginBottom: 16 }} />
                         <h4 style={{ color: '#64748b', marginBottom: 8 }}>Нет задач</h4>
-                        <p style={{ color: '#94a3b8', marginBottom: 24 }}>
-                            {search ? 'По вашему запросу задачи не найдены' : 'У вас пока нет назначенных задач'}
-                        </p>
-                        {isAdmin && (
-                            <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>Создать первую задачу</button>
-                        )}
+                        <p style={{ color: '#94a3b8', marginBottom: 24 }}>{search ? 'По вашему запросу задачи не найдены' : 'У вас пока нет назначенных задач'}</p>
+                        {isAdmin && <button className="btn btn-primary" onClick={() => setShowCreateModal(true)}>Создать первую задачу</button>}
                     </div>
                 ) : (
                     filteredTasks.map(task => (
-                        <div
-                            key={task.id}
-                            className="task-card"
-                            style={{
-                                background: 'white',
-                                borderRadius: 'var(--radius-lg)',
-                                border: '1px solid var(--border)',
-                                padding: '24px',
-                                marginBottom: '16px',
-                                transition: 'all var(--transition-fast)',
-                                position: 'relative',
-                                borderLeft: `4px solid ${
-                                    task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f59e0b' : '#10b981'
-                                }`,
-                                boxShadow: isOverdue(task.dueDate, task.status) ? '0 0 0 2px rgba(239, 68, 68, 0.1)' : 'var(--shadow-sm)'
-                            }}
-                        >
+                        <div key={task.id} className="task-card" style={{
+                            background: 'white', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)', padding: '24px', marginBottom: '16px', position: 'relative',
+                            borderLeft: `4px solid ${task.priority === 'HIGH' ? '#ef4444' : task.priority === 'MEDIUM' ? '#f59e0b' : '#10b981'}`,
+                            boxShadow: isOverdue(task.dueDate, task.status) ? '0 0 0 2px rgba(239,68,68,0.1)' : 'var(--shadow-sm)'
+                        }}>
                             {isOverdue(task.dueDate, task.status) && (
                                 <div style={{ position: 'absolute', top: '-8px', right: '16px', background: '#ef4444', color: 'white', padding: '4px 12px', borderRadius: 'var(--radius-full)', fontSize: '11px', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '4px' }}>
                                     <Warning fontSize="small" /> ПРОСРОЧЕНО
                                 </div>
                             )}
-
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '16px' }}>
                                 <div style={{ flex: 1 }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
@@ -408,9 +357,7 @@ const UserTasks = () => {
                                     </div>
                                     <p style={{ color: 'var(--text-light)', marginBottom: '16px', lineHeight: 1.6 }}>{task.description}</p>
                                     <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                                        {task.tags?.map((tag, index) => (
-                                            <span key={index} style={{ padding: '4px 10px', background: 'var(--bg-light)', borderRadius: 'var(--radius-full)', fontSize: '12px', color: 'var(--text-light)' }}>#{tag}</span>
-                                        ))}
+                                        {task.tags?.map((tag, index) => <span key={index} style={{ padding: '4px 10px', background: 'var(--bg-light)', borderRadius: 'var(--radius-full)', fontSize: '12px', color: 'var(--text-light)' }}>#{tag}</span>)}
                                     </div>
                                 </div>
                                 <div style={{ textAlign: 'right', minWidth: '120px' }}>
@@ -419,7 +366,6 @@ const UserTasks = () => {
                                     <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{task.estimatedTime}</div>
                                 </div>
                             </div>
-
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
                                 <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -429,39 +375,20 @@ const UserTasks = () => {
                                     {task.assetName && (
                                         <div style={{ fontSize: '13px', color: 'var(--text-light)' }}>
                                             <strong>Актив:</strong> {task.assetName}
-                                            {task.assetId && (
-                                                <a href={`/user/assets/${task.assetId}`} style={{ marginLeft: '8px', fontSize: '11px', textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); alert(`Переход к активу: ${task.assetName}`); }}>перейти →</a>
-                                            )}
+                                            {task.assetId && <a href={`/user/assets/${task.assetId}`} style={{ marginLeft: '8px', fontSize: '11px', textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); alert(`Переход к активу: ${task.assetName}`); }}>перейти →</a>}
                                         </div>
                                     )}
                                 </div>
-
                                 <div style={{ display: 'flex', gap: '8px' }}>
-                                    <button
-                                        className="btn btn-sm btn-secondary"
-                                        onClick={() => navigate(`/user/tasks/${task.id}`)}
-                                        style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
-                                    >
-                                        <Visibility fontSize="small" /> Подробнее
-                                    </button>
-
+                                    <button className="btn btn-sm btn-secondary" onClick={() => navigate(`/user/tasks/${task.id}`)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Visibility fontSize="small" /> Подробнее</button>
                                     {task.status !== 'COMPLETED' && (
                                         <>
-                                            {task.status === 'PENDING' && (
-                                                <button className="btn btn-sm btn-primary" onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}>Взять в работу</button>
-                                            )}
-                                            {task.status === 'IN_PROGRESS' && (
-                                                <button className="btn btn-sm btn-success" onClick={() => updateTaskStatus(task.id, 'COMPLETED')}>Завершить</button>
-                                            )}
-                                            {isOverdue(task.dueDate, task.status) && (
-                                                <button className="btn btn-sm btn-danger" onClick={() => { const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate); if (newDate) extendTaskDueDate(task.id, newDate); }}>Продлить срок</button>
-                                            )}
+                                            {task.status === 'PENDING' && <button className="btn btn-sm btn-primary" onClick={() => updateTaskStatus(task.id, 'IN_PROGRESS')}>Взять в работу</button>}
+                                            {task.status === 'IN_PROGRESS' && <button className="btn btn-sm btn-success" onClick={() => updateTaskStatus(task.id, 'COMPLETED')}>Завершить</button>}
+                                            {isOverdue(task.dueDate, task.status) && <button className="btn btn-sm btn-danger" onClick={() => { const newDate = prompt('Укажите новый срок (ГГГГ-ММ-ДД):', task.dueDate); if (newDate) extendTaskDueDate(task.id, newDate); }}>Продлить срок</button>}
                                         </>
                                     )}
-
-                                    {isAdmin && (
-                                        <button className="btn btn-sm btn-danger" onClick={() => deleteTask(task.id)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Delete fontSize="small" /></button>
-                                    )}
+                                    {isAdmin && <button className="btn btn-sm btn-danger" onClick={() => deleteTask(task.id)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Delete fontSize="small" /></button>}
                                 </div>
                             </div>
                         </div>
@@ -471,7 +398,7 @@ const UserTasks = () => {
 
             {/* Модальное окно создания задачи */}
             {showCreateModal && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
                     <div style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '32px', width: '90%', maxWidth: '500px', maxHeight: '90vh', overflow: 'auto' }}>
                         <h3 style={{ marginBottom: '24px' }}>Создание новой задачи</h3>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
