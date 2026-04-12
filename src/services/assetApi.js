@@ -153,6 +153,11 @@ export const searchAssets = async (query, params = { page: 0, size: 10 }) => {
     return response.data;
 };
 
+export const patchAsset = async (id, updates) => {
+    const response = await assetApi.patch(`/${id}`, updates);
+    return response.data;
+};
+
 export default {
     getAll: getAllAssets,
     getById: getAssetById,
@@ -167,4 +172,5 @@ export default {
     getLatestRisk,
     updateAssetThreat,
     searchAssets,
+    patchAsset,
 };
