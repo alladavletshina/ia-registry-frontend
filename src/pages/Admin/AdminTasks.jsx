@@ -10,7 +10,6 @@ import {
     Add,
     Delete,
     Edit,
-    Visibility,
     CalendarToday,
     PriorityHigh,
     Person,
@@ -42,7 +41,7 @@ const AdminTasks = () => {
         type: 'UPDATE',
         estimatedTime: '',
         tags: '',
-        assetId: '',
+        assetId: null,
         assignedTo: ''
     });
     const [filters, setFilters] = useState({
@@ -97,22 +96,48 @@ const AdminTasks = () => {
         loadUsers();
     }, [loadTasks, loadStats, loadUsers]);
 
-    const handleCreateTask = async () => {
+    const validateForm = () => {
         if (!formData.title.trim()) {
             alert('Введите название задачи');
-            return;
+            return false;
         }
+        if (!formData.description.trim()) {
+            alert('Введите описание задачи');
+            return false;
+        }
+        if (!formData.dueDate) {
+            alert('Укажите срок выполнения');
+            return false;
+        }
+        if (!formData.assetId) {
+            alert('Выберите связанный актив');
+            return false;
+        }
+        if (!formData.assignedTo) {
+            alert('Назначьте исполнителя');
+            return false;
+        }
+        const today = new Date().toISOString().split('T')[0];
+        if (formData.dueDate < today) {
+            alert('Срок выполнения не может быть в прошлом');
+            return false;
+        }
+        return true;
+    };
+
+    const handleCreateTask = async () => {
+        if (!validateForm()) return;
         try {
             const taskData = {
                 title: formData.title,
                 description: formData.description,
                 priority: formData.priority,
-                dueDate: formData.dueDate || null,
+                dueDate: formData.dueDate,
                 type: formData.type,
                 estimatedTime: formData.estimatedTime,
                 tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
-                assetId: formData.assetId ? parseInt(formData.assetId) : null,
-                assignedTo: formData.assignedTo || null
+                assetId: parseInt(formData.assetId),
+                assignedTo: formData.assignedTo
             };
             await taskApi.create(taskData);
             resetForm();
@@ -127,17 +152,18 @@ const AdminTasks = () => {
 
     const handleUpdateTask = async () => {
         if (!editingTask) return;
+        if (!validateForm()) return;
         try {
             const taskData = {
                 title: formData.title,
                 description: formData.description,
                 priority: formData.priority,
-                dueDate: formData.dueDate || null,
+                dueDate: formData.dueDate,
                 type: formData.type,
                 estimatedTime: formData.estimatedTime,
                 tags: formData.tags ? formData.tags.split(',').map(t => t.trim()) : [],
-                assetId: formData.assetId ? parseInt(formData.assetId) : null,
-                assignedTo: formData.assignedTo || null
+                assetId: parseInt(formData.assetId),
+                assignedTo: formData.assignedTo
             };
             await taskApi.update(editingTask.id, taskData);
             resetForm();
@@ -174,7 +200,7 @@ const AdminTasks = () => {
             type: task.type || 'UPDATE',
             estimatedTime: task.estimatedTime || '',
             tags: task.tags ? task.tags.join(', ') : '',
-            assetId: task.assetId || '',
+            assetId: task.assetId || null,
             assignedTo: task.assignedTo || ''
         });
         setShowCreateModal(true);
@@ -189,7 +215,7 @@ const AdminTasks = () => {
             type: 'UPDATE',
             estimatedTime: '',
             tags: '',
-            assetId: '',
+            assetId: null,
             assignedTo: ''
         });
     };
@@ -297,6 +323,7 @@ const AdminTasks = () => {
 
     return (
         <div className="user-tasks-container">
+            {/* Статистика */}
             <div className="stats-grid" style={{
                 display: 'grid',
                 gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
@@ -341,6 +368,7 @@ const AdminTasks = () => {
                 </div>
             </div>
 
+            {/* Панель фильтров */}
             <div className="control-panel" style={{
                 background: 'white',
                 padding: '20px',
@@ -426,6 +454,7 @@ const AdminTasks = () => {
                 </div>
             </div>
 
+            {/* Список задач */}
             <div className="tasks-list">
                 {filteredTasks.length === 0 ? (
                     <div className="empty-state" style={{
@@ -573,6 +602,7 @@ const AdminTasks = () => {
                 )}
             </div>
 
+            {/* Модальное окно создания/редактирования задачи */}
             {showCreateModal && (
                 <div className="modal-overlay" style={{
                     position: 'fixed',
@@ -601,7 +631,7 @@ const AdminTasks = () => {
 
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                             <div>
-                                <label>Название *</label>
+                                <label>Название <span className="required-star">*</span></label>
                                 <input
                                     type="text"
                                     className="input"
@@ -610,7 +640,7 @@ const AdminTasks = () => {
                                 />
                             </div>
                             <div>
-                                <label>Описание</label>
+                                <label>Описание <span className="required-star">*</span></label>
                                 <textarea
                                     className="input"
                                     rows={3}
@@ -648,7 +678,7 @@ const AdminTasks = () => {
                             </div>
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
                                 <div>
-                                    <label>Срок выполнения</label>
+                                    <label>Срок выполнения <span className="required-star">*</span></label>
                                     <input
                                         type="date"
                                         className="input"
@@ -678,15 +708,15 @@ const AdminTasks = () => {
                                 />
                             </div>
                             <div>
-                                <label>Актив (связанный)</label>
+                                <label>Актив (связанный) <span className="required-star">*</span></label>
                                 <AssetSearch
                                     value={formData.assetId ? Number(formData.assetId) : null}
-                                    onChange={(assetId) => setFormData({...formData, assetId: assetId || ''})}
+                                    onChange={(assetId) => setFormData({...formData, assetId: assetId || null})}
                                     placeholder="Поиск актива по названию..."
                                 />
                             </div>
                             <div>
-                                <label>Исполнитель</label>
+                                <label>Исполнитель <span className="required-star">*</span></label>
                                 <select
                                     className="input select"
                                     value={formData.assignedTo}

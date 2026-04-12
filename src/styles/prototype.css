@@ -2388,4 +2388,10 @@ body {
     .asset-dropdown li {
         transition: background-color 0.2s ease;
     }
+
+    .required-star {
+        color: #ef4444;
+        margin-left: 4px;
+        font-size: 14px;
+    }
 }
