@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import assetApi from '../../services/assetApi';
 import StatusBadge from '../../components/common/StatusBadge';
@@ -14,11 +14,7 @@ const AssetRegistry = () => {
     const [selectedAssetThreats, setSelectedAssetThreats] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    useEffect(() => {
-        fetchAssets();
-    }, [filters]);
-
-    const fetchAssets = async () => {
+    const fetchAssets = useCallback(async () => {
         setLoading(true);
         try {
             const data = await assetApi.getAll(filters);
@@ -27,6 +23,34 @@ const AssetRegistry = () => {
             console.error('Ошибка загрузки активов:', error);
         } finally {
             setLoading(false);
+        }
+    }, [filters]);
+
+    useEffect(() => {
+        const loadAssets = async () => {
+            setLoading(true);
+            setAssets([]); // очищаем старые данные
+            try {
+                const data = await assetApi.getAll(filters);
+                setAssets(data);
+            } catch (error) {
+                console.error('Ошибка загрузки активов:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+        loadAssets();
+    }, [filters]);
+
+    const handleFilterChange = (key, value) => {
+        if (value === '' || value === null) {
+            setFilters(prev => {
+                const newFilters = { ...prev };
+                delete newFilters[key];
+                return newFilters;
+            });
+        } else {
+            setFilters(prev => ({ ...prev, [key]: value }));
         }
     };
 
@@ -54,7 +78,6 @@ const AssetRegistry = () => {
         }
     };
 
-    // Преобразование статуса для отображения
     const mapStatusToClient = (status) => {
         switch (status) {
             case 'ACTIVE': return 'active';
@@ -65,7 +88,6 @@ const AssetRegistry = () => {
         }
     };
 
-    // Преобразование веса CIA в уровень для отображения в форме редактирования
     const getLevelFromWeight = (weight) => {
         if (weight === undefined || weight === null) return 'medium';
         if (weight <= 0) return 'low';
@@ -92,59 +114,13 @@ const AssetRegistry = () => {
 
     const columns = [
         { field: 'id', headerName: 'ID', width: 70 },
-        {
-            field: 'name',
-            headerName: 'Наименование',
-            width: 200,
-            renderCell: (params) => <strong>{params.value}</strong>
-        },
+        { field: 'name', headerName: 'Наименование', width: 200, renderCell: (params) => <strong>{params.value}</strong> },
         { field: 'ownerId', headerName: 'Владелец (ID)', width: 150 },
-        {
-            field: 'status',
-            headerName: 'Статус',
-            width: 120,
-            renderCell: (params) => <StatusBadge status={mapStatusToClient(params.value)} size="small" />
-        },
-        {
-            field: 'value',
-            headerName: 'Стоимость (руб.)',
-            width: 120,
-            renderCell: (params) => params.value ? params.value.toLocaleString() : '-'
-        },
-        {
-            field: 'latestRisk',
-            headerName: 'Риск (руб.)',
-            width: 130,
-            renderCell: (params) => {
-                const risk = params.value;
-                if (!risk) return '—';
-                const color = risk > 1000000 ? '#ef4444' : risk > 100000 ? '#f59e0b' : '#10b981';
-                return <span style={{ color, fontWeight: 500 }}>{risk.toLocaleString()}</span>;
-            }
-        },
-        {
-            field: 'legalStatus',
-            headerName: 'Правовой статус',
-            width: 150,
-            renderCell: (params) => {
-                const map = { pers_data: 'Персональные данные', commercial_secret: 'Коммерческая тайна', other: 'Иное' };
-                return map[params.value] || params.value || '-';
-            }
-        },
-        {
-            field: 'groupName',
-            headerName: 'Группа',
-            width: 150,
-            renderCell: (params) => params.value || '-'
-        },
-        {
-            field: 'confidentiality',
-            headerName: 'Конф-ть',
-            width: 100,
-            renderCell: (params) => (
-                <span className={`badge level-${params.value.toLowerCase()}`}>{params.value}</span>
-            )
-        },
+        { field: 'status', headerName: 'Статус', width: 120, renderCell: (params) => <StatusBadge status={mapStatusToClient(params.value)} size="small" /> },
+        { field: 'value', headerName: 'Стоимость (руб.)', width: 120, renderCell: (params) => params.value ? params.value.toLocaleString() : '-' },
+        { field: 'latestRisk', headerName: 'Риск (руб.)', width: 130, renderCell: (params) => { const risk = params.value; if (!risk) return '—'; const color = risk > 1000000 ? '#ef4444' : risk > 100000 ? '#f59e0b' : '#10b981'; return <span style={{ color, fontWeight: 500 }}>{risk.toLocaleString()}</span>; } },
+        { field: 'legalStatus', headerName: 'Правовой статус', width: 150, renderCell: (params) => { const map = { pers_data: 'Персональные данные', commercial_secret: 'Коммерческая тайна', other: 'Иное' }; return map[params.value] || params.value || '-'; } },
+        { field: 'groupName', headerName: 'Группа', width: 150, renderCell: (params) => params.value || '-' },
         { field: 'lastReview', headerName: 'Последняя проверка', width: 150 },
         {
             field: 'actions',
@@ -165,73 +141,35 @@ const AssetRegistry = () => {
             <div className="content-header">
                 <h1>Реестр информационных активов</h1>
                 <div className="header-actions">
-                    <button
-                        className="btn btn-primary"
-                        onClick={() => {
-                            setSelectedAsset(null);
-                            setSelectedAssetId(null);
-                            setSelectedAssetThreats([]);
-                            setShowCreateModal(true);
-                        }}
-                    >
-                        + Добавить актив
-                    </button>
+                    <button className="btn btn-primary" onClick={() => { setSelectedAsset(null); setSelectedAssetId(null); setSelectedAssetThreats([]); setShowCreateModal(true); }}>+ Добавить актив</button>
                 </div>
             </div>
-
             <div className="main-content">
                 <div className="card">
                     <div className="card-header">
-                        <div className="filters">
-                            <input
-                                className="input"
-                                type="text"
-                                placeholder="Поиск по названию..."
-                                onChange={(e) => setFilters({...filters, search: e.target.value})}
-                            />
-                            <select
-                                className="input"
-                                onChange={(e) => setFilters({...filters, status: e.target.value})}
-                            >
+                        <div className="filters" style={{ display: 'flex', gap: '12px' }}>
+                            <input className="input" type="text" placeholder="Поиск по названию..." onChange={(e) => handleFilterChange('search', e.target.value)} />
+                            <select className="input" onChange={(e) => handleFilterChange('status', e.target.value)}>
                                 <option value="">Все статусы</option>
-                                <option value="active">Активен</option>
-                                <option value="needs_review">На проверке</option>
+                                <option value="ACTIVE">Активен</option>
+                                <option value="NEEDS_REVIEW">На проверке</option>
+                                <option value="ARCHIVED">Архивирован</option>
+                                <option value="DRAFT">Черновик</option>
                             </select>
                         </div>
                     </div>
-
                     <div className="card-body" style={{ height: 500, width: '100%' }}>
-                        <DataGrid
-                            rows={assets}
-                            columns={columns}
-                            loading={loading}
-                            pageSize={10}
-                            rowsPerPageOptions={[10, 25, 50]}
-                            checkboxSelection
-                            disableSelectionOnClick
-                        />
+                        <DataGrid rows={assets} columns={columns} loading={loading} pageSize={10} rowsPerPageOptions={[10, 25, 50]} checkboxSelection disableSelectionOnClick />
                     </div>
                 </div>
             </div>
-
             {showCreateModal && (
                 <AssetCreateModal
                     assetId={selectedAssetId}
                     initialData={selectedAsset ? mapAssetToForm(selectedAsset) : null}
                     existingThreats={selectedAssetThreats}
-                    onClose={() => {
-                        setShowCreateModal(false);
-                        setSelectedAsset(null);
-                        setSelectedAssetId(null);
-                        setSelectedAssetThreats([]);
-                    }}
-                    onSave={async (savedAsset) => {
-                        await fetchAssets();
-                        setShowCreateModal(false);
-                        setSelectedAsset(null);
-                        setSelectedAssetId(null);
-                        setSelectedAssetThreats([]);
-                    }}
+                    onClose={() => { setShowCreateModal(false); setSelectedAsset(null); setSelectedAssetId(null); setSelectedAssetThreats([]); }}
+                    onSave={async (savedAsset) => { await fetchAssets(); setShowCreateModal(false); setSelectedAsset(null); setSelectedAssetId(null); setSelectedAssetThreats([]); }}
                 />
             )}
         </div>
