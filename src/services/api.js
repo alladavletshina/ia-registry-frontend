@@ -1,4 +1,3 @@
-// src/services/api.js - РЕАЛЬНАЯ АВТОРИЗАЦИЯ
 import axios from 'axios';
 import { refreshAccessToken } from './refreshToken';
 
@@ -47,7 +46,6 @@ authApi.interceptors.response.use(
     }
 );
 
-// РЕАЛЬНЫЙ login запрос - ТОЧНО КАК В CURL
 export const login = async (credentials) => {
     console.log('📤 Sending login to:', AUTH_URL + '/login');
     console.log('📤 Credentials:', credentials);
@@ -75,7 +73,6 @@ export const login = async (credentials) => {
     }
 };
 
-// Дополнительные методы
 export const logout = (refreshToken) => {
     console.log('🔐 Logout request');
     return authApi.post('/logout', { refreshToken });

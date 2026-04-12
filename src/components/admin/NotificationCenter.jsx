@@ -4,14 +4,11 @@ import {
     CheckCircle,
     Info,
     Assignment,
-    PersonAdd,
     Security
 } from '@mui/icons-material';
-import { useAuth } from '../../contexts/AuthContext';
 import notificationApi from '../../services/notificationApi';
 
 const NotificationCenter = ({ onMarkAsRead, onClose }) => {
-    const { user } = useAuth();
     const [notifications, setNotifications] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
