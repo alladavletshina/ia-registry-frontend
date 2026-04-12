@@ -1,5 +1,5 @@
-// src/pages/Admin/AdminTasks.jsx
 import React, { useState, useEffect, useCallback } from 'react';
+import AssetSearch from '../../components/assets/AssetSearch';
 import {
     CheckCircle,
     HourglassEmpty,
@@ -678,12 +678,11 @@ const AdminTasks = () => {
                                 />
                             </div>
                             <div>
-                                <label>ID актива</label>
-                                <input
-                                    type="number"
-                                    className="input"
-                                    value={formData.assetId}
-                                    onChange={(e) => setFormData({...formData, assetId: e.target.value})}
+                                <label>Актив (связанный)</label>
+                                <AssetSearch
+                                    value={formData.assetId ? Number(formData.assetId) : null}
+                                    onChange={(assetId) => setFormData({...formData, assetId: assetId || ''})}
+                                    placeholder="Поиск актива по названию..."
                                 />
                             </div>
                             <div>

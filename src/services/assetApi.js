@@ -148,6 +148,11 @@ export const updateAssetThreat = async (assetId, threatId, threatData) => {
     }
 };
 
+export const searchAssets = async (query, params = { page: 0, size: 10 }) => {
+    const response = await assetApi.get('/search', { params: { query, ...params } });
+    return response.data;
+};
+
 export default {
     getAll: getAllAssets,
     getById: getAssetById,
@@ -161,4 +166,5 @@ export default {
     removeAssetThreat,
     getLatestRisk,
     updateAssetThreat,
+    searchAssets,
 };

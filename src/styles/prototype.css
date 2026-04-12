@@ -2384,4 +2384,8 @@ body {
         color: var(--secondary-400);
         margin-top: 2px;
     }
+
+    .asset-dropdown li {
+        transition: background-color 0.2s ease;
+    }
 }
