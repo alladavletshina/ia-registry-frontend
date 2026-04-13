@@ -1,185 +1,210 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import assetApi from '../../services/assetApi';
-import userApi from '../../services/userApi';
+import AddThreatModal from '../../components/assets/AddThreatModal';
+import EditThreatModal from '../../components/assets/EditThreatModal';
 import StatusBadge from '../../components/common/StatusBadge';
-import AssetCreateModal from '../../components/assets/AssetCreateModal';
-
-const getLegalStatusLabel = (status) => {
-    switch(status) {
-        case 'pers_data': return 'Персональные данные';
-        case 'commercial_secret': return 'Коммерческая тайна';
-        case 'other': return 'Иное';
-        default: return status || '—';
-    }
-};
+import '../../styles/prototype.css';
 
 const AssetDetail = () => {
     const { id } = useParams();
     const navigate = useNavigate();
     const [asset, setAsset] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [showEditModal, setShowEditModal] = useState(false);
-    const [usersMap, setUsersMap] = useState({});
+    const [threats, setThreats] = useState([]);
+    const [risk, setRisk] = useState(null);
+    const [activeTab, setActiveTab] = useState('overview');
+    const [showAddThreatModal, setShowAddThreatModal] = useState(false);
+    const [editThreat, setEditThreat] = useState(null);
 
     useEffect(() => {
-        const loadUsers = async () => {
-            try {
-                const users = await userApi.getAll();
-                const map = {};
-                users.forEach(user => {
-                    map[user.keycloakId] = `${user.firstName} ${user.lastName} (${user.email})`;
-                });
-                setUsersMap(map);
-            } catch (error) {
-                console.error('Ошибка загрузки пользователей:', error);
-            }
-        };
-        loadUsers();
-    }, []);
+        loadAsset();
+        loadThreats();
+        loadRisk();
+    }, [id]);
 
-    const loadAsset = useCallback(async () => {
+    const loadAsset = async () => {
         try {
             const data = await assetApi.getById(id);
             setAsset(data);
         } catch (error) {
             console.error('Ошибка загрузки актива:', error);
-        } finally {
-            setLoading(false);
         }
-    }, [id]);
+    };
 
-    useEffect(() => {
-        loadAsset();
-    }, [loadAsset]);
-
-    const handleArchive = async () => {
-        if (!window.confirm('Вы уверены, что хотите архивировать этот актив?')) return;
+    const loadThreats = async () => {
         try {
-            await assetApi.patchAsset(id, { status: 'ARCHIVED' });
-            await loadAsset();
-            alert('Актив архивирован');
+            const data = await assetApi.getAssetThreats(id);
+            console.log('Threats loaded for admin:', data);
+            setThreats(data);
         } catch (error) {
-            console.error('Ошибка архивации:', error);
-            alert('Не удалось архивировать актив');
+            console.error('Ошибка загрузки угроз актива:', error);
         }
     };
 
-    const handleEdit = () => {
-        setShowEditModal(true);
+    const loadRisk = async () => {
+        const data = await assetApi.getLatestRisk(id);
+        setRisk(data);
     };
 
-    const handleEditSave = (updatedAsset) => {
-        setAsset(updatedAsset);
-        setShowEditModal(false);
+    const handleRemoveThreat = async (threatId) => {
+        if (window.confirm('Удалить угрозу?')) {
+            try {
+                await assetApi.removeAssetThreat(id, threatId);
+                await loadThreats();
+                await loadRisk();
+            } catch (error) {
+                console.error('Ошибка удаления:', error);
+            }
+        }
     };
 
-    if (loading) return <div className="loading-container">Загрузка...</div>;
-    if (!asset) return <div className="empty-state">Актив не найден</div>;
-
-    const isArchived = asset.status === 'ARCHIVED';
-    const ownerName = usersMap[asset.ownerId] || asset.ownerId || '—';
+    if (!asset) return <div className="loading-container">Загрузка...</div>;
 
     return (
         <div className="asset-view">
             <div className="asset-header">
-                <div className="asset-header-left">
-                    <button className="btn btn-secondary" onClick={() => navigate('/admin/assets')}>
-                        ← Назад
-                    </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <button className="btn btn-secondary" onClick={() => navigate('/admin/assets')}>← Назад</button>
                     <h1>{asset.name}</h1>
                 </div>
                 <div className="asset-meta">
                     <StatusBadge status={asset.status?.toLowerCase()} />
+                    {risk && (
+                        <span className="risk-badge" style={{ marginLeft: '16px', fontSize: '14px' }}>
+                            Риск: {risk.calculatedRisk?.toLocaleString()} руб.
+                        </span>
+                    )}
                 </div>
             </div>
 
-            <div className="detail-section">
-                <h3>Основная информация</h3>
-                <div className="detail-grid">
-                    <div className="detail-item"><strong>ID:</strong> <span>{asset.id}</span></div>
-                    <div className="detail-item"><strong>Владелец:</strong> <span>{ownerName}</span></div>
-                    <div className="detail-item"><strong>Статус:</strong> <StatusBadge status={asset.status?.toLowerCase()} /></div>
-                    <div className="detail-item"><strong>Последняя проверка:</strong> <span>{asset.lastReview || '—'}</span></div>
-                    <div className="detail-item"><strong>Создан:</strong> <span>{new Date(asset.createdAt).toLocaleDateString()}</span></div>
-                    <div className="detail-item"><strong>Обновлён:</strong> <span>{new Date(asset.updatedAt).toLocaleDateString()}</span></div>
-                    <div className="detail-item"><strong>Стоимость:</strong> <span>{asset.value ? asset.value.toLocaleString() + ' руб.' : '—'}</span></div>
-                    <div className="detail-item"><strong>Правовой статус:</strong> <span>{getLegalStatusLabel(asset.legalStatus)}</span></div>
-                    <div className="detail-item"><strong>Группа:</strong> <span>{asset.groupName || 'Без группы'}</span></div>
-                </div>
+            <div className="asset-tabs">
+                <button className={`tab-btn ${activeTab === 'overview' ? 'active' : ''}`} onClick={() => setActiveTab('overview')}>
+                    Обзор
+                </button>
+                <button className={`tab-btn ${activeTab === 'threats' ? 'active' : ''}`} onClick={() => setActiveTab('threats')}>
+                    Угрозы
+                </button>
             </div>
 
-            <div className="detail-section">
-                <h3>Оценка CIA</h3>
-                <div className="cia-display">
-                    <div className="cia-item">
-                        <span className="label">Конфиденциальность</span>
-                        <span className={`value level-${asset.confidentiality?.toLowerCase()}`}>{asset.confidentiality}</span>
+            <div className="asset-content">
+                {activeTab === 'overview' && (
+                    <div className="overview-tab">
+                        <div className="detail-section">
+                            <h3>Описание</h3>
+                            <p>{asset.description || 'Нет описания'}</p>
+                        </div>
+                        <div className="detail-section">
+                            <h3>Атрибуты</h3>
+                            <div className="detail-grid">
+                                <div><strong>Владелец:</strong> {asset.ownerId}</div>
+                                <div><strong>Местоположение:</strong> {asset.location || '-'}</div>
+                                <div><strong>Последняя проверка:</strong> {asset.lastReview}</div>
+                                <div><strong>Стоимость:</strong> {asset.value ? asset.value.toLocaleString() + ' руб.' : '-'}</div>
+                                <div><strong>Правовой статус:</strong> {asset.legalStatus || '-'}</div>
+                                <div><strong>Группа:</strong> {asset.groupName || 'Без группы'}</div>
+                            </div>
+                        </div>
+                        <div className="detail-section">
+                            <h3>Оценка CIA</h3>
+                            <div className="cia-display">
+                                <div className="cia-item">
+                                    <span className="label">Конфиденциальность</span>
+                                    <span className={`value level-${asset.confidentiality?.toLowerCase()}`}>{asset.confidentiality}</span>
+                                </div>
+                                <div className="cia-item">
+                                    <span className="label">Целостность</span>
+                                    <span className={`value level-${asset.integrity?.toLowerCase()}`}>{asset.integrity}</span>
+                                </div>
+                                <div className="cia-item">
+                                    <span className="label">Доступность</span>
+                                    <span className={`value level-${asset.availability?.toLowerCase()}`}>{asset.availability}</span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-                    <div className="cia-item">
-                        <span className="label">Целостность</span>
-                        <span className={`value level-${asset.integrity?.toLowerCase()}`}>{asset.integrity}</span>
+                )}
+
+                {activeTab === 'threats' && (
+                    <div className="threats-tab">
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                            <h3>Привязанные угрозы</h3>
+                            <button className="btn btn-primary" onClick={() => setShowAddThreatModal(true)}>
+                                + Добавить угрозу
+                            </button>
+                        </div>
+
+                        {threats.length === 0 ? (
+                            <p>Нет привязанных угроз</p>
+                        ) : (
+                            <div className="threats-list">
+                                {threats.map(threat => (
+                                    <div key={threat.id} className="threat-item" style={{ border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '12px' }}>
+                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                                            <div>
+                                                <strong>{threat.threatName}</strong>
+                                                <div><strong>Вероятность:</strong> {threat.probability * 100}%</div>
+                                                <div><strong>Эффективность мер:</strong> {threat.mitigationEffect * 100}%</div>
+                                                <div><strong>Дата оценки:</strong> {threat.assessmentDate}</div>
+                                            </div>
+                                            <div>
+                                                <button
+                                                    className="btn btn-sm btn-secondary"
+                                                    onClick={() => setEditThreat(threat)}
+                                                    style={{ marginRight: '8px' }}
+                                                >
+                                                    Изменить
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => handleRemoveThreat(threat.threatId)}
+                                                >
+                                                    Удалить
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        {risk && (
+                            <div className="risk-summary" style={{ marginTop: '20px', padding: '16px', background: '#f8f9fa', borderRadius: '8px' }}>
+                                <h4>Текущий интегральный риск</h4>
+                                <div style={{ fontSize: '24px', fontWeight: 'bold', color: risk.calculatedRisk > 1000000 ? '#ef4444' : '#10b981' }}>
+                                    {risk.calculatedRisk?.toLocaleString()} руб.
+                                </div>
+                                <small>Рассчитано: {new Date(risk.calculationDate).toLocaleString()}</small>
+                            </div>
+                        )}
                     </div>
-                    <div className="cia-item">
-                        <span className="label">Доступность</span>
-                        <span className={`value level-${asset.availability?.toLowerCase()}`}>{asset.availability}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="detail-section">
-                <h3>Описание</h3>
-                <p>{asset.description || 'Нет описания'}</p>
-            </div>
-
-            {asset.location && (
-                <div className="detail-section">
-                    <h3>Местоположение</h3>
-                    <p>{asset.location}</p>
-                </div>
-            )}
-
-            <div className="asset-actions">
-                <button className="btn btn-primary" onClick={handleEdit}>Редактировать</button>
-                {!isArchived && (
-                    <button className="btn btn-danger" onClick={handleArchive}>Архивировать</button>
                 )}
             </div>
 
-            {showEditModal && (
-                <AssetCreateModal
-                    assetId={asset.id}
-                    initialData={{
-                        name: asset.name,
-                        owner: asset.ownerId,
-                        status: mapStatusToForm(asset.status),
-                        confidentiality: asset.confidentiality?.toLowerCase(),
-                        integrity: asset.integrity?.toLowerCase(),
-                        availability: asset.availability?.toLowerCase(),
-                        lastReview: asset.lastReview,
-                        description: asset.description,
-                        location: asset.location,
-                        tags: asset.tags,
-                        value: asset.value,
-                        legalStatus: asset.legalStatus,
-                        groupId: asset.groupId
+            {showAddThreatModal && (
+                <AddThreatModal
+                    assetId={id}
+                    onClose={() => setShowAddThreatModal(false)}
+                    onThreatAdded={() => {
+                        loadThreats();
+                        loadRisk();
                     }}
-                    existingThreats={[]}
-                    onClose={() => setShowEditModal(false)}
-                    onSave={handleEditSave}
+                />
+            )}
+
+            {editThreat && (
+                <EditThreatModal
+                    assetId={id}
+                    threat={editThreat}
+                    onClose={() => setEditThreat(null)}
+                    onThreatUpdated={() => {
+                        loadThreats();
+                        loadRisk();
+                        setEditThreat(null);
+                    }}
                 />
             )}
         </div>
     );
-};
-
-const mapStatusToForm = (status) => {
-    switch(status) {
-        case 'ACTIVE': return 'active';
-        case 'NEEDS_REVIEW': return 'needs_review';
-        case 'ARCHIVED': return 'archived';
-        default: return 'active';
-    }
 };
 
 export default AssetDetail;

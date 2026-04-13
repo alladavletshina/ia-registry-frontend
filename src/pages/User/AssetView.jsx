@@ -158,7 +158,7 @@ const AssetView = () => {
                                                         onClick={() => setEditThreat(threat)}
                                                         style={{ marginRight: '8px' }}
                                                     >
-                                                        ✏️ Изменить
+                                                        Изменить
                                                     </button>
                                                     <button
                                                         className="btn btn-sm btn-danger"

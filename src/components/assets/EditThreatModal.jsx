@@ -1,13 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import assetApi from '../../services/assetApi';
-import '../../styles/prototype.css';
 
 const EditThreatModal = ({ assetId, threat, onClose, onThreatUpdated }) => {
-    const [probability, setProbability] = useState(threat?.probability || 0.5);
-    const [mitigationEffect, setMitigationEffect] = useState(threat?.mitigationEffect || 0);
-    const [customC, setCustomC] = useState(threat?.customC !== undefined ? threat.customC : null);
-    const [customI, setCustomI] = useState(threat?.customI !== undefined ? threat.customI : null);
-    const [customA, setCustomA] = useState(threat?.customA !== undefined ? threat.customA : null);
+    const [probability, setProbability] = useState(threat?.probability ?? 0.5);
+    const [mitigationEffect, setMitigationEffect] = useState(threat?.mitigationEffect ?? 0);
     const [loading, setLoading] = useState(false);
 
     const handleSubmit = async () => {
@@ -15,16 +11,27 @@ const EditThreatModal = ({ assetId, threat, onClose, onThreatUpdated }) => {
             alert('Ошибка: угроза не определена');
             return;
         }
+
+        const updatedThreat = {
+            ...threat,
+            probability: parseFloat(probability),
+            mitigationEffect: parseFloat(mitigationEffect),
+        };
+
+        // Если нет assetId — работаем локально (новый актив)
+        if (!assetId) {
+            onThreatUpdated(updatedThreat);
+            onClose();
+            return;
+        }
+
         setLoading(true);
         try {
             await assetApi.updateAssetThreat(assetId, threat.threatId, {
-                probability: parseFloat(probability),
-                mitigationEffect: parseFloat(mitigationEffect),
-                customC: customC !== null ? customC : undefined,
-                customI: customI !== null ? customI : undefined,
-                customA: customA !== null ? customA : undefined
+                probability: updatedThreat.probability,
+                mitigationEffect: updatedThreat.mitigationEffect,
             });
-            onThreatUpdated();
+            onThreatUpdated(updatedThreat);
             onClose();
         } catch (error) {
             console.error('Ошибка обновления угрозы:', error);
@@ -34,41 +41,75 @@ const EditThreatModal = ({ assetId, threat, onClose, onThreatUpdated }) => {
         }
     };
 
+    // Жёсткие стили для гарантированного отображения
     return (
-        <div className="modal-overlay">
-            <div className="modal" style={{ maxWidth: '500px' }}>
-                <h3>Редактирование угрозы</h3>
-                <div className="form-group">
-                    <label>Угроза</label>
-                    <input type="text" className="input" value={threat?.threatName || ''} disabled />
+        <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 9999,
+        }}>
+            <div style={{
+                background: 'white',
+                borderRadius: '12px',
+                padding: '24px',
+                width: '90%',
+                maxWidth: '500px',
+                boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)',
+            }}>
+                <h3 style={{ marginBottom: '20px' }}>Редактирование угрозы</h3>
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Угроза</label>
+                    <input
+                        type="text"
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
+                        value={threat?.threatName || ''}
+                        disabled
+                    />
                 </div>
-                <div className="form-group">
-                    <label>Вероятность (0-1)</label>
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Вероятность (0-1)</label>
                     <input
                         type="number"
-                        className="input"
                         step="0.01"
                         min="0"
                         max="1"
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                         value={probability}
-                        onChange={(e) => setProbability(e.target.value)}
+                        onChange={(e) => setProbability(parseFloat(e.target.value))}
                     />
                 </div>
-                <div className="form-group">
-                    <label>Эффективность мер (0-1)</label>
+                <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>Эффективность мер (0-1)</label>
                     <input
                         type="number"
-                        className="input"
                         step="0.01"
                         min="0"
                         max="1"
+                        style={{ width: '100%', padding: '10px', border: '1px solid #e2e8f0', borderRadius: '8px' }}
                         value={mitigationEffect}
-                        onChange={(e) => setMitigationEffect(e.target.value)}
+                        onChange={(e) => setMitigationEffect(parseFloat(e.target.value))}
                     />
                 </div>
-                <div className="modal-actions">
-                    <button className="btn btn-secondary" onClick={onClose} disabled={loading}>Отмена</button>
-                    <button className="btn btn-primary" onClick={handleSubmit} disabled={loading}>
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
+                    <button
+                        onClick={onClose}
+                        style={{ padding: '8px 16px', background: '#f1f5f9', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                        disabled={loading}
+                    >
+                        Отмена
+                    </button>
+                    <button
+                        onClick={handleSubmit}
+                        style={{ padding: '8px 16px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer' }}
+                        disabled={loading}
+                    >
                         {loading ? 'Сохранение...' : 'Сохранить'}
                     </button>
                 </div>

@@ -4,12 +4,14 @@ import { getAssetGroups } from '../../services/assetApi';
 import userApi from '../../services/userApi';
 import threatApi from '../../services/threatApi';
 import assetApi from '../../services/assetApi';
+import EditThreatModal from '../../components/assets/EditThreatModal';
 import '../../styles/prototype.css';
 
 const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], assetId, currentRisk }) => {
     const [groups, setGroups] = useState([]);
     const [users, setUsers] = useState([]);
     const [loadingUsers, setLoadingUsers] = useState(false);
+    const [editThreat, setEditThreat] = useState(null);
     const [formData, setFormData] = useState(initialData || {
         name: '',
         description: '',
@@ -139,6 +141,37 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
         }
     };
 
+    const updateExistingThreat = async (updatedThreat) => {
+        try {
+            await assetApi.updateAssetThreat(assetId, updatedThreat.threatId, {
+                probability: updatedThreat.probability,
+                mitigationEffect: updatedThreat.mitigationEffect
+            });
+            setExistingThreatsList(prev =>
+                prev.map(t => t.threatId === updatedThreat.threatId ? updatedThreat : t)
+            );
+        } catch (error) {
+            console.error('Ошибка обновления угрозы:', error);
+            alert('Не удалось обновить угрозу');
+        }
+    };
+
+    const updateSelectedThreat = (updatedThreat) => {
+        setSelectedThreats(prev =>
+            prev.map(t => t.threatId === updatedThreat.threatId ? updatedThreat : t)
+        );
+    };
+
+    const handleEditThreatSave = (updatedThreat) => {
+        const isExisting = existingThreatsList.some(t => t.threatId === updatedThreat.threatId);
+        if (isExisting && assetId) {
+            updateExistingThreat(updatedThreat);
+        } else {
+            updateSelectedThreat(updatedThreat);
+        }
+        setEditThreat(null);
+    };
+
     const statusMap = {
         active: 'ACTIVE',
         needs_review: 'NEEDS_REVIEW',
@@ -209,27 +242,31 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
             let savedAsset;
             if (assetId) {
                 savedAsset = await assetApi.update(assetId, requestData);
-                for (const threat of selectedThreats) {
-                    await assetApi.addAssetThreat(savedAsset.id, {
-                        threatId: parseInt(threat.threatId),
-                        probability: threat.probability,
-                        mitigationEffect: threat.mitigationEffect
-                    });
-                }
             } else {
                 savedAsset = await assetApi.create(requestData);
-                for (const threat of selectedThreats) {
+            }
+
+            // Добавляем новые угрозы, игнорируя уже существующие (409 Conflict)
+            for (const threat of selectedThreats) {
+                try {
                     await assetApi.addAssetThreat(savedAsset.id, {
                         threatId: parseInt(threat.threatId),
                         probability: threat.probability,
                         mitigationEffect: threat.mitigationEffect
                     });
+                } catch (error) {
+                    if (error.response?.status === 409) {
+                        console.warn(`Угроза ${threat.threatId} уже привязана к активу, пропускаем`);
+                    } else {
+                        throw error;
+                    }
                 }
             }
+
             onSave(savedAsset);
         } catch (error) {
             console.error('Ошибка сохранения актива:', error);
-            alert('Ошибка при сохранении актива');
+            alert('Ошибка при сохранении актива: ' + (error.response?.data?.message || error.message));
         }
     };
 
@@ -247,7 +284,15 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                                     <div>Вероятность: {threat.probability != null ? (threat.probability * 100).toFixed(0) + '%' : 'не задана'}</div>
                                     <div>Эффективность мер: {threat.mitigationEffect != null ? (threat.mitigationEffect * 100).toFixed(0) + '%' : '0%'}</div>
                                 </div>
-                                <button className="btn btn-sm btn-danger" onClick={() => removeExistingThreat(threat.threatId)}>Удалить</button>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button className="btn btn-sm btn-danger" onClick={() => removeExistingThreat(threat.threatId)}>Удалить</button>
+                                    <button
+                                        className="btn btn-sm btn-secondary"
+                                        onClick={() => setEditThreat(threat)}
+                                    >
+                                        Изменить
+                                    </button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -264,7 +309,10 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
                                     <div>Вероятность: {(threat.probability * 100).toFixed(0)}%</div>
                                     <div>Эффективность мер: {(threat.mitigationEffect * 100).toFixed(0)}%</div>
                                 </div>
-                                <button className="btn btn-sm btn-danger" onClick={() => removeSelectedThreat(idx)}>Удалить</button>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <button className="btn btn-sm btn-danger" onClick={() => removeSelectedThreat(idx)}>Удалить</button>
+                                    <button className="btn btn-sm btn-secondary" onClick={() => setEditThreat(threat)}> Изменить</button>
+                                </div>
                             </div>
                         </div>
                     ))}
@@ -305,95 +353,108 @@ const AssetCreateModal = ({ onClose, onSave, initialData, existingThreats = [], 
     );
 
     return (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
-            <div className="modal" style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '32px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
-                <h3 style={{ marginBottom: '24px' }}>{assetId ? 'Редактирование' : 'Создание'} актива</h3>
-                {currentRisk && (
-                    <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
-                        <strong>Текущий интегральный риск:</strong> {currentRisk.calculatedRisk?.toLocaleString()} руб.
+        <>
+            {/* Основное модальное окно */}
+            <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+                <div className="modal" style={{ background: 'white', borderRadius: 'var(--radius-lg)', padding: '32px', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflow: 'auto', display: 'flex', flexDirection: 'column' }}>
+                    <h3 style={{ marginBottom: '24px' }}>{assetId ? 'Редактирование' : 'Создание'} актива</h3>
+                    {currentRisk && (
+                        <div style={{ marginBottom: '16px', padding: '12px', background: '#f8f9fa', borderRadius: '8px' }}>
+                            <strong>Текущий интегральный риск:</strong> {currentRisk.calculatedRisk?.toLocaleString()} руб.
+                        </div>
+                    )}
+                    <div style={{ flex: 1 }}>
+                        <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label style={{ fontWeight: 'bold' }}>Наименование <span className="required-star">*</span></label>
+                                <input className="input" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Введите наименование актива" />
+                                {errors.name && <small style={{ color: 'red' }}>{errors.name}</small>}
+                            </div>
+
+                            <div className="form-group">
+                                <label style={{ fontWeight: 'bold' }}>Статус <span className="required-star">*</span></label>
+                                <select className="input select" value={formData.status} onChange={(e) => handleChange('status', e.target.value)}>
+                                    <option value="active">Активен</option>
+                                    <option value="needs_review">Требует проверки</option>
+                                    <option value="archived">Архивирован</option>
+                                    <option value="draft">Черновик</option>
+                                </select>
+                                {errors.status && <small style={{ color: 'red' }}>{errors.status}</small>}
+                            </div>
+
+                            <div className="form-group">
+                                <label style={{ fontWeight: 'bold' }}>Владелец <span className="required-star">*</span></label>
+                                <select className="input select" value={formData.owner} onChange={(e) => handleChange('owner', e.target.value)} disabled={loadingUsers}>
+                                    <option value="">Выберите владельца</option>
+                                    {users.map(user => (
+                                        <option key={user.keycloakId} value={user.keycloakId}>{user.firstName} {user.lastName} ({user.email})</option>
+                                    ))}
+                                </select>
+                                {errors.owner && <small style={{ color: 'red' }}>{errors.owner}</small>}
+                            </div>
+
+                            <div className="form-group">
+                                <label>Группа <span className="required-star">*</span></label>
+                                <select className="input select" value={formData.groupId} onChange={(e) => handleChange('groupId', e.target.value)}>
+                                    <option value="">Выберите группу</option>
+                                    {groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
+                                </select>
+                                {errors.groupId && <small style={{ color: 'red' }}>{errors.groupId}</small>}
+                            </div>
+
+                            <div className="form-group">
+                                <label style={{ fontWeight: 'bold' }}>Стоимость (руб.) <span className="required-star">*</span></label>
+                                <input type="number" className="input" value={formData.value} onChange={(e) => handleChange('value', e.target.value)} step="0.01" min="0.01" />
+                                {errors.value && <small style={{ color: 'red' }}>{errors.value}</small>}
+                            </div>
+
+                            <div className="form-group">
+                                <label>Правовой статус <span className="required-star">*</span></label>
+                                <select className="input select" value={formData.legalStatus} onChange={(e) => handleChange('legalStatus', e.target.value)}>
+                                    <option value="">Выберите правовой статус</option>
+                                    <option value="pers_data">Персональные данные</option>
+                                    <option value="commercial_secret">Коммерческая тайна</option>
+                                    <option value="other">Иное</option>
+                                </select>
+                                {errors.legalStatus && <small style={{ color: 'red' }}>{errors.legalStatus}</small>}
+                            </div>
+
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label>Местоположение</label>
+                                <input className="input" value={formData.location} onChange={(e) => handleChange('location', e.target.value)} placeholder="Физическое или логическое расположение" />
+                            </div>
+
+                            <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                                <label style={{ fontWeight: 'bold' }}>Описание <span className="required-star">*</span></label>
+                                <textarea className="input" rows={4} value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Подробное описание актива" style={{ width: '100%', resize: 'vertical' }} />
+                                {errors.description && <small style={{ color: 'red' }}>{errors.description}</small>}
+                            </div>
+
+                            <div style={{ gridColumn: 'span 2' }}>
+                                <CIAInput values={formData} onChange={(cia) => setFormData(prev => ({ ...prev, ...cia }))} />
+                                <small style={{ color: 'var(--text-light)' }}><span className="required-star">*</span> Конфиденциальность, целостность, доступность обязательны</small>
+                                {(errors.confidentiality || errors.integrity || errors.availability) && <small style={{ color: 'red', display: 'block' }}>Все уровни CIA обязательны для заполнения</small>}
+                            </div>
+                        </div>
+                        {renderThreatSection()}
                     </div>
-                )}
-                <div style={{ flex: 1 }}>
-                    <div className="form-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '24px' }}>
-                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                            <label style={{ fontWeight: 'bold' }}>Наименование <span className="required-star">*</span></label>
-                            <input className="input" value={formData.name} onChange={(e) => handleChange('name', e.target.value)} placeholder="Введите наименование актива" />
-                            {errors.name && <small style={{ color: 'red' }}>{errors.name}</small>}
-                        </div>
-
-                        <div className="form-group">
-                            <label style={{ fontWeight: 'bold' }}>Статус <span className="required-star">*</span></label>
-                            <select className="input select" value={formData.status} onChange={(e) => handleChange('status', e.target.value)}>
-                                <option value="active">Активен</option>
-                                <option value="needs_review">Требует проверки</option>
-                                <option value="archived">Архивирован</option>
-                                <option value="draft">Черновик</option>
-                            </select>
-                            {errors.status && <small style={{ color: 'red' }}>{errors.status}</small>}
-                        </div>
-
-                        <div className="form-group">
-                            <label style={{ fontWeight: 'bold' }}>Владелец <span className="required-star">*</span></label>
-                            <select className="input select" value={formData.owner} onChange={(e) => handleChange('owner', e.target.value)} disabled={loadingUsers}>
-                                <option value="">Выберите владельца</option>
-                                {users.map(user => (
-                                    <option key={user.keycloakId} value={user.keycloakId}>{user.firstName} {user.lastName} ({user.email})</option>
-                                ))}
-                            </select>
-                            {errors.owner && <small style={{ color: 'red' }}>{errors.owner}</small>}
-                        </div>
-
-                        <div className="form-group">
-                            <label>Группа <span className="required-star">*</span></label>
-                            <select className="input select" value={formData.groupId} onChange={(e) => handleChange('groupId', e.target.value)}>
-                                <option value="">Выберите группу</option>
-                                {groups.map(group => <option key={group.id} value={group.id}>{group.name}</option>)}
-                            </select>
-                            {errors.groupId && <small style={{ color: 'red' }}>{errors.groupId}</small>}
-                        </div>
-
-                        <div className="form-group">
-                            <label style={{ fontWeight: 'bold' }}>Стоимость (руб.) <span className="required-star">*</span></label>
-                            <input type="number" className="input" value={formData.value} onChange={(e) => handleChange('value', e.target.value)} step="0.01" min="0.01" />
-                            {errors.value && <small style={{ color: 'red' }}>{errors.value}</small>}
-                        </div>
-
-                        <div className="form-group">
-                            <label>Правовой статус <span className="required-star">*</span></label>
-                            <select className="input select" value={formData.legalStatus} onChange={(e) => handleChange('legalStatus', e.target.value)}>
-                                <option value="">Выберите правовой статус</option>
-                                <option value="pers_data">Персональные данные</option>
-                                <option value="commercial_secret">Коммерческая тайна</option>
-                                <option value="other">Иное</option>
-                            </select>
-                            {errors.legalStatus && <small style={{ color: 'red' }}>{errors.legalStatus}</small>}
-                        </div>
-
-                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                            <label>Местоположение</label>
-                            <input className="input" value={formData.location} onChange={(e) => handleChange('location', e.target.value)} placeholder="Физическое или логическое расположение" />
-                        </div>
-
-                        <div className="form-group" style={{ gridColumn: 'span 2' }}>
-                            <label style={{ fontWeight: 'bold' }}>Описание <span className="required-star">*</span></label>
-                            <textarea className="input" rows={4} value={formData.description} onChange={(e) => handleChange('description', e.target.value)} placeholder="Подробное описание актива" style={{ width: '100%', resize: 'vertical' }} />
-                            {errors.description && <small style={{ color: 'red' }}>{errors.description}</small>}
-                        </div>
-
-                        <div style={{ gridColumn: 'span 2' }}>
-                            <CIAInput values={formData} onChange={(cia) => setFormData(prev => ({ ...prev, ...cia }))} />
-                            <small style={{ color: 'var(--text-light)' }}><span className="required-star">*</span> Конфиденциальность, целостность, доступность обязательны</small>
-                            {(errors.confidentiality || errors.integrity || errors.availability) && <small style={{ color: 'red', display: 'block' }}>Все уровни CIA обязательны для заполнения</small>}
-                        </div>
+                    <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+                        <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
+                        <button className="btn btn-primary" onClick={handleSubmit}>Сохранить</button>
                     </div>
-                    {renderThreatSection()}
-                </div>
-                <div className="modal-actions" style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '32px', paddingTop: '24px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
-                    <button className="btn btn-secondary" onClick={onClose}>Отмена</button>
-                    <button className="btn btn-primary" onClick={handleSubmit}>Сохранить</button>
                 </div>
             </div>
-        </div>
+
+            {/* Рендер EditThreatModal без портала, но с собственным high z-index */}
+            {editThreat && (
+                <EditThreatModal
+                    assetId={assetId}
+                    threat={editThreat}
+                    onClose={() => setEditThreat(null)}
+                    onThreatUpdated={handleEditThreatSave}
+                />
+            )}
+        </>
     );
 };
 

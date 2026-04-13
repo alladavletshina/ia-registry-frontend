@@ -17,11 +17,6 @@ const AssetView = () => {
     const { user } = useAuth();
     const isAdmin = user?.role === 'admin';
 
-    // Отладка
-    console.log('User role:', user?.role);
-    console.log('isAdmin:', isAdmin);
-    console.log('Threats count:', threats.length);
-
     useEffect(() => {
         loadAsset();
         loadThreats();
@@ -91,7 +86,6 @@ const AssetView = () => {
             <div className="asset-content">
                 {activeTab === 'overview' && (
                     <div className="overview-tab">
-                        {/* ... обзорная информация ... */}
                         <div className="detail-section">
                             <h3>Описание</h3>
                             <p>{asset.description || 'Нет описания'}</p>
@@ -131,7 +125,6 @@ const AssetView = () => {
                     <div className="threats-tab">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3>Привязанные угрозы</h3>
-                            {/* Временно убираем проверку isAdmin для теста */}
                             <button className="btn btn-primary" onClick={() => setShowAddThreatModal(true)}>
                                 + Добавить угрозу
                             </button>
@@ -151,22 +144,19 @@ const AssetView = () => {
                                                 <div><strong>Дата оценки:</strong> {threat.assessmentDate}</div>
                                             </div>
                                             <div>
-                                                {/* Кнопки всегда видны для теста */}
-                                                <>
-                                                    <button
-                                                        className="btn btn-sm btn-secondary"
-                                                        onClick={() => setEditThreat(threat)}
-                                                        style={{ marginRight: '8px' }}
-                                                    >
-                                                        ✏️ Изменить
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-sm btn-danger"
-                                                        onClick={() => handleRemoveThreat(threat.threatId)}
-                                                    >
-                                                        Удалить
-                                                    </button>
-                                                </>
+                                                <button
+                                                    className="btn btn-sm btn-secondary"
+                                                    onClick={() => setEditThreat(threat)}
+                                                    style={{ marginRight: '8px' }}
+                                                >
+                                                    Изменить
+                                                </button>
+                                                <button
+                                                    className="btn btn-sm btn-danger"
+                                                    onClick={() => handleRemoveThreat(threat.threatId)}
+                                                >
+                                                    Удалить
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
