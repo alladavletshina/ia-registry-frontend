@@ -9,30 +9,21 @@ import {
 import reportApi from '../../services/reportApi';
 import '../../styles/prototype.css';
 
-// ========== УЛУЧШЕННЫЕ КОМПОНЕНТЫ ГРАФИКОВ ==========
-
 const SimpleBarChart = ({ data, width = 700, height = 400 }) => {
-    if (!data || !Array.isArray(data) || data.length === 0) {
-        return (
-            <div style={{ width, height, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <div style={{ textAlign: 'center', color: '#64748b' }}>Нет данных</div>
-            </div>
-        );
+    if (!data || data.length === 0) {
+        return <div style={{ textAlign: 'center', color: '#64748b' }}>Нет данных</div>;
     }
     const maxValue = Math.max(...data.map(item => item.value || 0), 1);
-    const chartHeight = height - 100; // увеличили отступ снизу
+    const chartHeight = height - 100;
     const bottomMargin = 80;
     const leftMargin = 50;
-
-    // Увеличиваем ширину столбцов
-    const barWidth = Math.min(100, (width - leftMargin - 20) / data.length * 0.8);
+    const barWidth = Math.min(80, (width - leftMargin - 20) / data.length * 0.8);
     const barSpacing = Math.min(20, (width - leftMargin - 20) / data.length * 0.2);
     const startX = leftMargin;
 
     return (
         <div style={{ width: '100%', overflowX: 'auto' }}>
-            <div style={{ width: Math.max(width, leftMargin + data.length * (barWidth + barSpacing) + 20), height: height, position: 'relative' }}>
-                {/* Ось Y */}
+            <div style={{ width: Math.max(width, leftMargin + data.length * (barWidth + barSpacing) + 20), height, position: 'relative' }}>
                 {[...Array(5)].map((_, i) => {
                     const val = (maxValue / 4) * i;
                     const y = chartHeight - (val / maxValue) * chartHeight + 10;
@@ -42,25 +33,13 @@ const SimpleBarChart = ({ data, width = 700, height = 400 }) => {
                         </div>
                     );
                 })}
-                {/* Столбцы */}
                 {data.map((item, idx) => {
-                    const barHeight = (item.value / maxValue) * chartHeight;
+                    const barHeight = ((item.value || 0) / maxValue) * chartHeight;
                     const x = startX + idx * (barWidth + barSpacing);
                     return (
                         <div key={idx} style={{ position: 'absolute', bottom: bottomMargin, left: x, width: barWidth, textAlign: 'center' }}>
                             <div style={{ height: barHeight, backgroundColor: item.color || '#3b82f6', width: '100%', borderRadius: '4px 4px 0 0' }} />
-                            {/* Контейнер подписи с фиксированной высотой */}
-                            <div style={{
-                                marginTop: 8,
-                                fontSize: 11,
-                                color: '#333',
-                                wordBreak: 'break-word',
-                                maxWidth: barWidth,
-                                minHeight: 40,    // фиксированная минимальная высота для всех подписей
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
-                            }}>
+                            <div style={{ marginTop: 8, fontSize: 11, color: '#333', wordBreak: 'break-word', maxWidth: barWidth, minHeight: 40 }}>
                                 {item.name}
                             </div>
                             <div style={{ fontSize: 12, fontWeight: 'bold', marginTop: 4 }}>{item.value}</div>
