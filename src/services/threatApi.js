@@ -50,7 +50,11 @@ export const syncThreats = async () => {
         const response = await threatApi.post('/sync');
         return response.data;
     } catch (error) {
-        console.error('Ошибка синхронизации угроз:', error);
+        // Обработка 504 Gateway Timeout
+        if (error.response?.status === 504 || error.code === 'ECONNABORTED' || error.message?.includes('timeout')) {
+            throw new Error('Сервис временно недоступен. Попробуйте загрузить файл вручную через кнопку «Загрузить XLSX».');
+        }
+        // Остальные ошибки пробрасываем как есть
         throw error;
     }
 };
