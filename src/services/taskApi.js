@@ -151,8 +151,37 @@ export const getStatsByUser = (userId) => {
     return taskApi.get('/stats/by-user', { params: { userId } }).then(res => res.data);
 };
 
+// Возвращает объект Page (с content, totalElements и т.д.)
+export const getTasksPage = async (params = {}) => {
+    try {
+        const response = await taskApi.get('', { params });
+        // Если бэкенд возвращает Page
+        if (response.data && 'content' in response.data && 'totalElements' in response.data) {
+            return response.data;
+        }
+        // Если бэкенд вернул массив, превращаем в Page
+        if (Array.isArray(response.data)) {
+            return {
+                content: response.data,
+                totalElements: response.data.length,
+                totalPages: 1,
+                size: response.data.length,
+                number: 0,
+                first: true,
+                last: true,
+                empty: response.data.length === 0
+            };
+        }
+        return { content: [], totalElements: 0 };
+    } catch (error) {
+        console.error('Ошибка загрузки задач (Page):', error);
+        throw error;
+    }
+};
+
 const taskApiObject = {
     getAll: getAllTasks,
+    getPage: getTasksPage,
     getById: getTaskById,
     create: createTask,
     update: updateTask,

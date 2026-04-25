@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import Pagination from '@mui/material/Pagination';
 import {
     CheckCircle,
     HourglassEmpty,
@@ -44,6 +45,11 @@ const UserTasks = () => {
         assetId: null
     });
 
+    // Состояния пагинации
+    const [page, setPage] = useState(0);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalElements, setTotalElements] = useState(0);
+
     // Получаем внутренний ID пользователя
     useEffect(() => {
         const fetchInternalId = async () => {
@@ -63,21 +69,22 @@ const UserTasks = () => {
         if (!internalUserId) return;
         setLoading(true);
         try {
-            const params = {};
-            params.userId = internalUserId;
-            if (search) params.search = search;
-            const cleanParams = Object.fromEntries(
-                Object.entries(params).filter(([_, v]) => v != null && v !== '')
-            );
-            const data = await taskApi.getAll(cleanParams);
-            setTasks(data);
+            const params = {
+                userId: internalUserId,
+                page,
+                size: pageSize,
+                ...(search && { search })
+            };
+            const pageData = await taskApi.getPage(params);
+            setTasks(pageData.content || []);
+            setTotalElements(pageData.totalElements || 0);
         } catch (error) {
             console.error('Ошибка загрузки задач:', error);
             alert('Не удалось загрузить задачи');
         } finally {
             setLoading(false);
         }
-    }, [search, internalUserId]);
+    }, [search, internalUserId, page, pageSize]);
 
     const loadStats = useCallback(async () => {
         if (!internalUserId) return;
@@ -96,35 +103,15 @@ const UserTasks = () => {
         }
     }, [internalUserId, loadTasks, loadStats]);
 
-    const extendTaskDueDate = async (taskId, newDueDate) => {
-        try {
-            await taskApi.updateTaskFields(taskId, { dueDate: newDueDate });
-            await loadTasks();
-            await loadStats();
-            alert('Срок задачи продлён');
-        } catch (error) {
-            console.error('Ошибка продления срока:', error);
-            alert('Не удалось продлить срок');
-        }
-    };
-
+    // Фильтрация на клиенте (только по статусу, т.к. поиск уже передан на сервер)
     const filteredTasks = tasks.filter(task => {
-        if (filter !== 'all') {
-            if (filter === 'overdue') {
-                const today = new Date();
-                const dueDate = new Date(task.dueDate);
-                if (!(dueDate < today && task.status !== 'COMPLETED')) return false;
-            } else if (filter !== task.status) return false;
+        if (filter === 'all') return true;
+        if (filter === 'overdue') {
+            const today = new Date();
+            const dueDate = new Date(task.dueDate);
+            return dueDate < today && task.status !== 'COMPLETED';
         }
-        if (search) {
-            const searchLower = search.toLowerCase();
-            return (
-                task.title?.toLowerCase().includes(searchLower) ||
-                task.description?.toLowerCase().includes(searchLower) ||
-                task.tags?.some(tag => tag.toLowerCase().includes(searchLower))
-            );
-        }
-        return true;
+        return task.status === filter;
     });
 
     const updateTaskStatus = async (taskId, newStatus) => {
@@ -135,6 +122,18 @@ const UserTasks = () => {
         } catch (error) {
             console.error('Ошибка обновления статуса:', error);
             alert('Не удалось обновить статус задачи');
+        }
+    };
+
+    const extendTaskDueDate = async (taskId, newDueDate) => {
+        try {
+            await taskApi.updateTaskFields(taskId, { dueDate: newDueDate });
+            await loadTasks();
+            await loadStats();
+            alert('Срок задачи продлён');
+        } catch (error) {
+            console.error('Ошибка продления срока:', error);
+            alert('Не удалось продлить срок');
         }
     };
 
@@ -180,7 +179,7 @@ const UserTasks = () => {
 
     const exportTasks = () => {
         const csvContent = [
-            ['ID', 'Название', 'Статус', 'Приоритет', 'Срок', 'Тип', 'Назначена', 'Создана'].join(','),
+            ['ID', 'Название', 'Статус', 'Приоритет', 'Срок', 'Тип', 'Назначил', 'Создана'].join(','),
             ...filteredTasks.map(task => [
                 task.id,
                 `"${task.title}"`,
@@ -257,6 +256,10 @@ const UserTasks = () => {
         return due < today;
     };
 
+    const handlePageChange = (event, newPage) => {
+        setPage(newPage - 1);
+    };
+
     if (loadingProfile || (loading && !internalUserId)) {
         return (
             <div className="loading-container">
@@ -310,6 +313,15 @@ const UserTasks = () => {
                             <option value="COMPLETED">Выполненные</option>
                             <option value="overdue">Просроченные</option>
                         </select>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '16px' }}>
+                            <span>Показывать:</span>
+                            <select value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(0); }} className="input select" style={{ width: '80px' }}>
+                                <option value={5}>5</option>
+                                <option value={10}>10</option>
+                                <option value={25}>25</option>
+                                <option value={50}>50</option>
+                            </select>
+                        </div>
                     </div>
                     <div style={{ display: 'flex', gap: '12px' }}>
                         <button className="btn btn-secondary" onClick={exportTasks} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Download /> Экспорт</button>
@@ -367,15 +379,21 @@ const UserTasks = () => {
                                 </div>
                             </div>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '20px', paddingTop: '20px', borderTop: '1px solid var(--border)' }}>
-                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                                <div style={{ display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <Person fontSize="small" style={{ color: '#64748b' }} />
                                         <span style={{ fontSize: '13px', color: 'var(--text-light)' }}><strong>Назначил:</strong> {task.assignedBy}</span>
                                     </div>
-                                    {task.assetName && (
-                                        <div style={{ fontSize: '13px', color: 'var(--text-light)' }}>
-                                            <strong>Актив:</strong> {task.assetName}
-                                            {task.assetId && <a href={`/user/assets/${task.assetId}`} style={{ marginLeft: '8px', fontSize: '11px', textDecoration: 'none' }} onClick={(e) => { e.preventDefault(); alert(`Переход к активу: ${task.assetName}`); }}>перейти →</a>}
+                                    {task.assetId && (
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            <span style={{ fontSize: '13px', color: 'var(--text-light)' }}><strong>Актив:</strong></span>
+                                            <a
+                                                href={`/user/assets/${task.assetId}`}
+                                                style={{ color: '#3b82f6', textDecoration: 'none', fontSize: '13px', cursor: 'pointer' }}
+                                                onClick={(e) => { e.preventDefault(); navigate(`/user/assets/${task.assetId}`); }}
+                                            >
+                                                {task.assetName || `Актив #${task.assetId}`}
+                                            </a>
                                         </div>
                                     )}
                                 </div>
@@ -395,6 +413,20 @@ const UserTasks = () => {
                     ))
                 )}
             </div>
+
+            {/* Пагинация */}
+            {totalElements > pageSize && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px' }}>
+                    <Pagination
+                        count={Math.ceil(totalElements / pageSize)}
+                        page={page + 1}
+                        onChange={handlePageChange}
+                        color="primary"
+                        showFirstButton
+                        showLastButton
+                    />
+                </div>
+            )}
 
             {/* Модальное окно создания задачи */}
             {showCreateModal && (
