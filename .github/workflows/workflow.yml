@@ -1,4 +1,3 @@
-# .github/workflows/deploy-ftp.yml
 name: Deploy via FTP
 
 on:
@@ -14,6 +13,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
+
+      - name: Use production environment
+        run: cp .env.production .env
 
       - run: npm install && CI=false npm run build
 
