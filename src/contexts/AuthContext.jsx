@@ -100,7 +100,8 @@ export const AuthProvider = ({ children }) => {
                 fullName: decoded.name || (isAdmin ? 'Administrator' : 'User'),
                 role,
                 token: access_token,
-                refreshToken: refresh_token
+                refreshToken: refresh_token,
+                keycloakId: decoded.sub
             };
 
             localStorage.setItem('token', access_token);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import assetApi from '../../services/assetApi';
 import taskApi from '../../services/taskApi';
+import userApi from '../../services/userApi'; // Добавлен импорт userApi
 import '../../styles/prototype.css';
 
 const UserDashboard = () => {
@@ -18,28 +19,48 @@ const UserDashboard = () => {
     const [recentTasks, setRecentTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [internalUserId, setInternalUserId] = useState(null); // Добавлено состояние для внутреннего ID
 
     useEffect(() => {
-        loadDashboardData();
+        loadUserProfile(); // Загружаем профиль для получения внутреннего ID
     }, []);
 
-    const loadDashboardData = async () => {
+    // Загрузка профиля пользователя
+    const loadUserProfile = async () => {
+        try {
+            const profile = await userApi.getCurrentUser();
+            setInternalUserId(profile.id);
+            // После получения ID загружаем данные дашборда
+            await loadDashboardData(profile.id);
+        } catch (err) {
+            console.error('Ошибка загрузки профиля:', err);
+            setError('Не удалось загрузить данные пользователя');
+            setLoading(false);
+        }
+    };
+
+    // Загрузка основных данных с использованием внутреннего ID пользователя
+    const loadDashboardData = async (userId) => {
         setLoading(true);
         setError(null);
         try {
-            // Мои активы
+            // Мои активы (без изменений)
             let myAssets = [];
             const assetsRes = await assetApi.getMyAssets();
             if (Array.isArray(assetsRes)) myAssets = assetsRes;
             else if (assetsRes?.data && Array.isArray(assetsRes.data)) myAssets = assetsRes.data;
 
-            // Мои задачи (назначенные на меня)
+            // Мои задачи с фильтрацией по внутреннему ID пользователя
             let myTasks = [];
-            try {
-                const tasksRes = await taskApi.getAll({ assignedTo: user?.keycloakId });
-                if (Array.isArray(tasksRes)) myTasks = tasksRes;
-                else if (tasksRes?.content && Array.isArray(tasksRes.content)) myTasks = tasksRes.content;
-            } catch (e) { console.warn(e); }
+            if (userId) {
+                try {
+                    const tasksRes = await taskApi.getAll({ userId: userId }); // Используем внутренний ID
+                    if (Array.isArray(tasksRes)) myTasks = tasksRes;
+                    else if (tasksRes?.content && Array.isArray(tasksRes.content)) myTasks = tasksRes.content;
+                } catch (e) {
+                    console.warn('Ошибка загрузки задач:', e);
+                }
+            }
 
             const today = new Date().toISOString().split('T')[0];
             const needReviewCount = myAssets.filter(a => a.status === 'NEEDS_REVIEW').length;
@@ -105,7 +126,7 @@ const UserDashboard = () => {
             <div className="empty-state">
                 <h3>Ошибка</h3>
                 <p>{error}</p>
-                <button className="btn btn-primary" onClick={loadDashboardData}>Повторить</button>
+                <button className="btn btn-primary" onClick={() => loadUserProfile()}>Повторить</button>
             </div>
         );
     }
