@@ -55,6 +55,21 @@ export const syncThreats = async () => {
     }
 };
 
+// Новый метод для загрузки файла
+export const uploadThreatsFile = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+        const response = await threatApi.post('/upload', formData, {
+            headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        return response.data;
+    } catch (error) {
+        console.error('Ошибка загрузки файла угроз:', error);
+        throw error;
+    }
+};
+
 // Алиас для sync
 export const sync = syncThreats;
 
@@ -64,4 +79,5 @@ export default {
     getThreatById,
     syncThreats,
     sync,
+    uploadThreatsFile,
 };

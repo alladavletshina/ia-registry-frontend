@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import {
     Button,
@@ -23,7 +23,8 @@ import {
     Visibility,
     Refresh,
     CheckCircle,
-    Cancel
+    Cancel,
+    UploadFile        // <-- добавляем иконку загрузки
 } from '@mui/icons-material';
 import threatApi from '../../services/threatApi';
 import '../../styles/prototype.css';
@@ -40,6 +41,9 @@ const ThreatManagement = () => {
     const [detailOpen, setDetailOpen] = useState(false);
     const [syncLoading, setSyncLoading] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
+
+    // Реф для скрытого input file
+    const fileInputRef = useRef(null);
 
     useEffect(() => {
         loadThreats();
@@ -85,6 +89,34 @@ const ThreatManagement = () => {
             showSnackbar('Ошибка синхронизации: ' + (error.response?.data?.message || error.message), 'error');
         } finally {
             setSyncLoading(false);
+        }
+    };
+
+    // Обработчик выбора файла XLSX
+    const handleFileUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Проверяем расширение – только .xlsx
+        if (!file.name.toLowerCase().endsWith('.xlsx')) {
+            showSnackbar('Поддерживаются только файлы .xlsx', 'error');
+            if (fileInputRef.current) fileInputRef.current.value = '';
+            return;
+        }
+
+        setSyncLoading(true);
+        try {
+            const message = await threatApi.uploadThreatsFile(file);
+            showSnackbar(message || 'Файл успешно загружен и обработан', 'success');
+            // Обновляем таблицу угроз через секунду
+            setTimeout(() => loadThreats(), 1000);
+        } catch (error) {
+            const errMsg = error.response?.data?.message || error.message || 'Ошибка загрузки файла';
+            showSnackbar(errMsg, 'error');
+        } finally {
+            setSyncLoading(false);
+            // Очищаем input, чтобы можно было загрузить тот же файл повторно
+            if (fileInputRef.current) fileInputRef.current.value = '';
         }
     };
 
@@ -167,9 +199,29 @@ const ThreatManagement = () => {
             <div className="content-header">
                 <h1>Угрозы из БДУ ФСТЭК</h1>
                 <div className="header-actions">
-                    <Button variant="contained" startIcon={<Sync />} onClick={handleSync} disabled={syncLoading}>
+                    <Button
+                        variant="contained"
+                        startIcon={<Sync />}
+                        onClick={handleSync}
+                        disabled={syncLoading}
+                    >
                         {syncLoading ? 'Синхронизация...' : 'Синхронизировать'}
                     </Button>
+                    <Button
+                        variant="outlined"
+                        startIcon={<UploadFile />}
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={syncLoading}
+                    >
+                        Загрузить XLSX
+                    </Button>
+                    <input
+                        type="file"
+                        ref={fileInputRef}
+                        style={{ display: 'none' }}
+                        accept=".xlsx"
+                        onChange={handleFileUpload}
+                    />
                 </div>
             </div>
 
