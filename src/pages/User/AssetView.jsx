@@ -131,7 +131,6 @@ const AssetView = () => {
                     <div className="threats-tab">
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                             <h3>Привязанные угрозы</h3>
-                            {/* Временно убираем проверку isAdmin для теста */}
                             <button className="btn btn-primary" onClick={() => setShowAddThreatModal(true)}>
                                 + Добавить угрозу
                             </button>
