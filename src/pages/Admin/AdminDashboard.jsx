@@ -4,6 +4,17 @@ import assetApi from '../../services/assetApi';
 import userApi from '../../services/userApi';
 import taskApi from '../../services/taskApi';
 import auditApi from '../../services/auditApi';
+// Импорты иконок Material UI
+import TrendingUp from '@mui/icons-material/TrendingUp';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import ArrowForward from '@mui/icons-material/ArrowForward';
+import Assessment from '@mui/icons-material/Assessment';
+import People from '@mui/icons-material/People';
+import Description from '@mui/icons-material/Description';
+import TaskIcon from '@mui/icons-material/Task';
+import DangerousIcon from '@mui/icons-material/Dangerous';
+import InfoIcon from '@mui/icons-material/Info';
 import '../../styles/prototype.css';
 
 const AdminDashboard = () => {
@@ -26,25 +37,22 @@ const AdminDashboard = () => {
     }, []);
 
     const loadDashboardData = async () => {
+        // ... (без изменений, тот же код)
         setLoading(true);
         setError(null);
         try {
-            // Активы
             let assets = [];
             const assetsRes = await assetApi.getAll();
             if (Array.isArray(assetsRes)) assets = assetsRes;
             else if (assetsRes?.data && Array.isArray(assetsRes.data)) assets = assetsRes.data;
 
-            // Пользователи
             let users = [];
             const usersRes = await userApi.getAll();
             if (Array.isArray(usersRes)) users = usersRes;
             else if (usersRes?.data && Array.isArray(usersRes.data)) users = usersRes.data;
 
-            // Статистика задач
             const taskStats = await taskApi.getStats();
 
-            // Последние 3 события аудита
             let auditEvents = [];
             try {
                 const auditRes = await auditApi.getLogs({ page: 0, size: 3, sort: 'timestamp,desc' });
@@ -57,7 +65,6 @@ const AdminDashboard = () => {
                 a.confidentiality === 'HIGH' || a.integrity === 'HIGH' || a.availability === 'HIGH'
             ).length;
 
-            // Топ-3 актива по убыванию риска (latestRisk) или по дате создания
             const sortedAssets = [...assets].sort((a, b) => (b.latestRisk || 0) - (a.latestRisk || 0));
             const top3 = sortedAssets.slice(0, 3);
 
@@ -94,12 +101,13 @@ const AdminDashboard = () => {
         return date.toLocaleDateString('ru-RU');
     };
 
+    // Заменяем текстовые иконки на компоненты
     const getSeverityIcon = (severity) => {
         switch(severity?.toUpperCase()) {
-            case 'DANGER': return '🔴';
-            case 'WARNING': return '⚠️';
-            case 'SUCCESS': return '✅';
-            default: return 'ℹ️';
+            case 'DANGER': return <DangerousIcon fontSize="small" style={{ color: '#ef4444' }} />;
+            case 'WARNING': return <WarningIcon fontSize="small" style={{ color: '#f59e0b' }} />;
+            case 'SUCCESS': return <CheckCircle fontSize="small" style={{ color: '#10b981' }} />;
+            default: return <InfoIcon fontSize="small" style={{ color: '#3b82f6' }} />;
         }
     };
 
@@ -112,7 +120,6 @@ const AdminDashboard = () => {
         }
     };
 
-    // Человеко-читаемое описание действия
     const getActionLabel = (action) => {
         const map = {
             'ASSET_CREATE': 'Создал актив',
@@ -132,7 +139,6 @@ const AdminDashboard = () => {
         return map[action] || action;
     };
 
-    // Сокращение длинного текста
     const getShortDetails = (details, maxLength = 70) => {
         if (!details) return '';
         if (details.length <= maxLength) return details;
@@ -169,32 +175,56 @@ const AdminDashboard = () => {
                 <div className="stat-card" onClick={() => navigate('/admin/assets')} style={{ cursor: 'pointer' }}>
                     <h3>Всего активов</h3>
                     <p className="number">{stats.totalAssets}</p>
-                    <span className="stat-trend">+{Math.floor(stats.totalAssets * 0.1)} за месяц</span>
+                    <span className="stat-trend" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <TrendingUp fontSize="small" /> +{Math.floor(stats.totalAssets * 0.1)} за месяц
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/admin/users')} style={{ cursor: 'pointer' }}>
                     <h3>Пользователей</h3>
                     <p className="number">{stats.totalUsers}</p>
-                    <span className="stat-trend">+2 новых</span>
+                    <span className="stat-trend" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <TrendingUp fontSize="small" /> +2 новых
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/admin/assets?status=needs_review')} style={{ cursor: 'pointer' }}>
                     <h3>На проверке</h3>
                     <p className="number">{stats.pendingReviews}</p>
-                    <span className="stat-trend warning">{stats.pendingReviews > 0 ? 'Требуют внимания' : 'Все проверены'}</span>
+                    <span className="stat-trend warning" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.pendingReviews > 0 ? (
+                            <><WarningIcon fontSize="small" /> Требуют внимания</>
+                        ) : (
+                            <><CheckCircle fontSize="small" /> Все проверены</>
+                        )}
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/admin/assets?risk=high')} style={{ cursor: 'pointer' }}>
                     <h3>Высокий риск</h3>
                     <p className="number">{stats.highRiskAssets}</p>
-                    <span className="stat-trend warning">{stats.highRiskAssets > 0 ? 'Требует мониторинга' : 'Норма'}</span>
+                    <span className="stat-trend warning" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.highRiskAssets > 0 ? (
+                            <><WarningIcon fontSize="small" /> Требует мониторинга</>
+                        ) : (
+                            <><CheckCircle fontSize="small" /> Норма</>
+                        )}
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/admin/tasks?status=PENDING')} style={{ cursor: 'pointer' }}>
                     <h3>Задач в работе</h3>
                     <p className="number">{stats.pendingTasks}</p>
-                    <span className="stat-trend">{stats.pendingTasks > 0 ? 'Активны' : 'Нет активных'}</span>
+                    <span className="stat-trend" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.pendingTasks > 0 ? 'Активны' : 'Нет активных'}
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/admin/tasks?status=OVERDUE')} style={{ cursor: 'pointer' }}>
                     <h3>Просрочено задач</h3>
                     <p className="number">{stats.overdueTasks}</p>
-                    <span className="stat-trend warning">{stats.overdueTasks > 0 ? 'Требуют внимания' : 'Всё в срок'}</span>
+                    <span className="stat-trend warning" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.overdueTasks > 0 ? (
+                            <><WarningIcon fontSize="small" /> Требуют внимания</>
+                        ) : (
+                            <><CheckCircle fontSize="small" /> Всё в срок</>
+                        )}
+                    </span>
                 </div>
             </div>
 
@@ -203,7 +233,7 @@ const AdminDashboard = () => {
                     <div className="section-header">
                         <h3>Ключевые активы</h3>
                         <button className="btn btn-secondary" onClick={() => navigate('/admin/assets')}>
-                            Все активы →
+                            Все активы <ArrowForward fontSize="small" />
                         </button>
                     </div>
                     <div className="assets-grid">
@@ -264,16 +294,16 @@ const AdminDashboard = () => {
                             <h3 className="mb-6">Быстрые действия</h3>
                             <div className="quick-actions">
                                 <button className="quick-action-btn" onClick={() => navigate('/admin/reports')}>
-                                    📊 Посмотреть отчет
+                                    <Assessment fontSize="small" /> Посмотреть отчет
                                 </button>
                                 <button className="quick-action-btn" onClick={() => navigate('/admin/users')}>
-                                    👥 Посмотреть пользователей
+                                    <People fontSize="small" /> Посмотреть пользователей
                                 </button>
                                 <button className="quick-action-btn" onClick={() => navigate('/admin/audit')}>
-                                    📋 Журнал аудита
+                                    <Description fontSize="small" /> Журнал аудита
                                 </button>
                                 <button className="quick-action-btn" onClick={() => navigate('/admin/tasks')}>
-                                    ✅ Задачи
+                                    <TaskIcon fontSize="small" /> Задачи
                                 </button>
                             </div>
                         </div>
@@ -283,7 +313,7 @@ const AdminDashboard = () => {
                             <div className="section-header">
                                 <h3>Последние события аудита</h3>
                                 <button className="btn btn-secondary" onClick={() => navigate('/admin/audit')}>
-                                    Весь журнал →
+                                    Весь журнал <ArrowForward fontSize="small" />
                                 </button>
                             </div>
                             {recentAuditEvents.length === 0 ? (
