@@ -3,7 +3,17 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import assetApi from '../../services/assetApi';
 import taskApi from '../../services/taskApi';
-import userApi from '../../services/userApi'; // Добавлен импорт userApi
+import userApi from '../../services/userApi';
+// Импорты иконок Material UI
+import TrendingUp from '@mui/icons-material/TrendingUp';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircle from '@mui/icons-material/CheckCircle';
+import ArrowForward from '@mui/icons-material/ArrowForward';
+import Folder from '@mui/icons-material/Folder';
+import TaskIcon from '@mui/icons-material/Task';
+import Person from '@mui/icons-material/Person';
+import CalendarToday from '@mui/icons-material/CalendarToday';
+import FlashOn from '@mui/icons-material/FlashOn';
 import '../../styles/prototype.css';
 
 const UserDashboard = () => {
@@ -19,18 +29,16 @@ const UserDashboard = () => {
     const [recentTasks, setRecentTasks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const [internalUserId, setInternalUserId] = useState(null); // Добавлено состояние для внутреннего ID
+    const [internalUserId, setInternalUserId] = useState(null);
 
     useEffect(() => {
-        loadUserProfile(); // Загружаем профиль для получения внутреннего ID
+        loadUserProfile();
     }, []);
 
-    // Загрузка профиля пользователя
     const loadUserProfile = async () => {
         try {
             const profile = await userApi.getCurrentUser();
             setInternalUserId(profile.id);
-            // После получения ID загружаем данные дашборда
             await loadDashboardData(profile.id);
         } catch (err) {
             console.error('Ошибка загрузки профиля:', err);
@@ -39,22 +47,19 @@ const UserDashboard = () => {
         }
     };
 
-    // Загрузка основных данных с использованием внутреннего ID пользователя
     const loadDashboardData = async (userId) => {
         setLoading(true);
         setError(null);
         try {
-            // Мои активы (без изменений)
             let myAssets = [];
             const assetsRes = await assetApi.getMyAssets();
             if (Array.isArray(assetsRes)) myAssets = assetsRes;
             else if (assetsRes?.data && Array.isArray(assetsRes.data)) myAssets = assetsRes.data;
 
-            // Мои задачи с фильтрацией по внутреннему ID пользователя
             let myTasks = [];
             if (userId) {
                 try {
-                    const tasksRes = await taskApi.getAll({ userId: userId }); // Используем внутренний ID
+                    const tasksRes = await taskApi.getAll({ userId: userId });
                     if (Array.isArray(tasksRes)) myTasks = tasksRes;
                     else if (tasksRes?.content && Array.isArray(tasksRes.content)) myTasks = tasksRes.content;
                 } catch (e) {
@@ -142,22 +147,38 @@ const UserDashboard = () => {
                 <div className="stat-card" onClick={() => navigate('/user/my-assets')} style={{ cursor: 'pointer' }}>
                     <h3>Мои активы</h3>
                     <p className="number">{stats.myAssetsCount}</p>
-                    <span className="stat-trend">+{Math.floor(stats.myAssetsCount * 0.1)} за неделю</span>
+                    <span className="stat-trend" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <TrendingUp fontSize="small" /> +{Math.floor(stats.myAssetsCount * 0.1)} за неделю
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/user/my-assets?filter=needs_review')} style={{ cursor: 'pointer' }}>
                     <h3>Требуют проверки</h3>
                     <p className="number">{stats.needReview}</p>
-                    <span className="stat-trend warning">{stats.needReview > 0 ? 'Требуют внимания' : 'Всё в порядке'}</span>
+                    <span className="stat-trend warning" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.needReview > 0 ? (
+                            <><WarningIcon fontSize="small" /> Требуют внимания</>
+                        ) : (
+                            <><CheckCircle fontSize="small" /> Всё в порядке</>
+                        )}
+                    </span>
                 </div>
                 <div className="stat-card" onClick={() => navigate('/user/tasks')} style={{ cursor: 'pointer' }}>
                     <h3>Мои задачи</h3>
                     <p className="number">{stats.myTasks}</p>
-                    <span className="stat-trend">{stats.myTasks > 0 ? `${stats.myTasks} активны` : 'Нет задач'}</span>
+                    <span className="stat-trend" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.myTasks > 0 ? `${stats.myTasks} активны` : 'Нет задач'}
+                    </span>
                 </div>
                 <div className="stat-card">
                     <h3>Обновлено сегодня</h3>
                     <p className="number">{stats.updatedToday}</p>
-                    <span className="stat-trend">{stats.updatedToday > 0 ? '✓ Актуально' : 'Требует обновления'}</span>
+                    <span className="stat-trend" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {stats.updatedToday > 0 ? (
+                            <><CheckCircle fontSize="small" /> Актуально</>
+                        ) : (
+                            'Требует обновления'
+                        )}
+                    </span>
                 </div>
             </div>
 
@@ -166,7 +187,7 @@ const UserDashboard = () => {
                     <div className="section-header">
                         <h3>Мои недавние активы</h3>
                         <button className="btn btn-secondary" onClick={() => navigate('/user/my-assets')}>
-                            Все активы →
+                            Все активы <ArrowForward fontSize="small" />
                         </button>
                     </div>
                     {recentAssets.length === 0 ? (
@@ -230,7 +251,7 @@ const UserDashboard = () => {
                             <div className="section-header">
                                 <h3>Мои последние задачи</h3>
                                 <button className="btn btn-secondary" onClick={() => navigate('/user/tasks')}>
-                                    Все задачи →
+                                    Все задачи <ArrowForward fontSize="small" />
                                 </button>
                             </div>
                             {recentTasks.length === 0 ? (
@@ -257,8 +278,12 @@ const UserDashboard = () => {
                                                 {task.description?.length > 80 ? task.description.substring(0, 80) + '…' : task.description || 'Нет описания'}
                                             </p>
                                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px', color: 'var(--text-light)' }}>
-                                                <span>📅 Срок: {formatDate(task.dueDate)}</span>
-                                                <span>⚡ {getPriorityText(task.priority)}</span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <CalendarToday fontSize="inherit" /> Срок: {formatDate(task.dueDate)}
+                                                </span>
+                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <FlashOn fontSize="inherit" /> {getPriorityText(task.priority)}
+                                                </span>
                                             </div>
                                         </div>
                                     ))}
@@ -272,13 +297,13 @@ const UserDashboard = () => {
                             <h3 className="mb-6">Быстрые действия</h3>
                             <div className="quick-actions">
                                 <button className="quick-action-btn" onClick={() => navigate('/user/my-assets')}>
-                                    📁 Мои активы
+                                    <Folder fontSize="small" /> Мои активы
                                 </button>
                                 <button className="quick-action-btn" onClick={() => navigate('/user/tasks')}>
-                                    ✅ Мои задачи
+                                    <TaskIcon fontSize="small" /> Мои задачи
                                 </button>
                                 <button className="quick-action-btn" onClick={() => navigate('/user/profile')}>
-                                    👤 Мой профиль
+                                    <Person fontSize="small" /> Мой профиль
                                 </button>
                             </div>
                         </div>

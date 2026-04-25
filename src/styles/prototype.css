@@ -739,17 +739,17 @@ body {
     font-weight: 500;
 }
 
-.stat-trend::before {
-    content: '↑';
-}
+/*.stat-trend::before {*/
+/*    content: '↑';*/
+/*}*/
 
 .stat-trend.warning {
     color: var(--warning);
 }
 
-.stat-trend.warning::before {
-    content: '⚠';
-}
+/*.stat-trend.warning::before {*/
+/*    content: '⚠';*/
+/*}*/
 
 .dashboard-sections {
     display: grid;
