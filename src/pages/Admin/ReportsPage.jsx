@@ -240,9 +240,21 @@ const ReportsPage = () => {
 
     const renderAssetsReport = () => {
         if (!reportData) return null;
-        const { byCategory, byStatus, byConfidentiality, growthTrend } = reportData;
+        const { byCategory, byStatus, byConfidentiality, growthTrend, totalRisk } = reportData;
+
         return (
             <div className="assets-report" style={{ display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                {/* Новая карточка общего риска */}
+                <div className="stat-card" style={{ background: '#f8fafc', marginBottom: 0 }}>
+                    <h4 style={{ margin: 0, color: '#1e293b' }}>Общий риск организации</h4>
+                    <p className="number" style={{ fontSize: '36px', fontWeight: 'bold', marginTop: '8px' }}>
+                        {totalRisk ? totalRisk.toLocaleString() : '0'} ₽
+                    </p>
+                    <p style={{ fontSize: '12px', color: '#64748b', marginTop: '8px' }}>
+                        Суммарные ожидаемые потери по всем активам
+                    </p>
+                </div>
+
                 {/* Первая строка: Рост активов + Уровень конфиденциальности (рядом) */}
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '24px', justifyContent: 'center' }}>
                     <div className="chart-card" style={{ flex: '1 1 400px' }}>
